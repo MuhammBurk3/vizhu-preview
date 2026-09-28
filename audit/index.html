@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="Вижу: визуальный аудит 2.0">
+<meta property="og:description" content="Что мешает сайту выглядеть цельным продуктом, как это исправить и как это будет выглядеть. До и после на реальных экранах.">
+<title>Вижу: аудит 2.0</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1230'/%3E%3Cpath d='M4 16c3.5-5.5 7.5-8 12-8s8.5 2.5 12 8c-3.5 5.5-7.5 8-12 8s-8.5-2.5-12-8z' fill='%23f2eee6'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='%23c98a2e'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%230b1230'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Display:wght@300;400&family=Onest:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b1230; --panel: #111936; --panel-2: #151e42; --line: #28325a;
+    --text: #f2eee6; --text-2: #b9c0d4; --text-3: #8790ab; --gold: #e4bf6c; --violet: #9b7ce8; --moon: #a9b8ec; --bad: #f0a0a0;
+    --serif: 'Noto Serif Display', Georgia, serif; --sans: 'Onest', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text-2); font: 400 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+  a { color: var(--gold); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 16px 80px; }
+  .back { font-size: 14px; text-decoration: none; }
+  h1, h2, h3 { color: var(--text); }
+  h1 { font: 300 clamp(34px, 6vw, 56px)/1.08 var(--serif); margin: 18px 0 14px; }
+  h2 { font: 400 clamp(26px, 4vw, 36px)/1.15 var(--serif); margin: 0 0 12px; }
+  h3 { font: 600 18px/1.35 var(--sans); margin: 22px 0 8px; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 18px; color: var(--text-2); max-width: 70ch; }
+  .kicker { font: 600 12px/1.3 var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); }
+  .muted { color: var(--text-3); font-size: 14px; }
+  b, strong { color: var(--text); font-weight: 600; }
+  ul { padding-left: 20px; margin: 0 0 12px; }
+  li + li { margin-top: 6px; }
+
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 8px; }
+  .toc a { padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--text-2); text-decoration: none; font-size: 14px; background: var(--panel); }
+  .toc a:hover { border-color: var(--gold); color: var(--text); }
+
+  section { margin-top: 64px; scroll-margin-top: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 22px 20px; }
+  .verdict { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin-top: 22px; }
+  .verdict .card b { display: block; font: 400 22px/1.2 var(--serif); margin-bottom: 6px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 12px/1.3 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .now { color: var(--bad); font-weight: 600; }
+  td .goal { color: var(--gold); font-weight: 600; }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+  .table-scroll table th:first-child, .table-scroll table td:first-child { padding-left: 16px; }
+
+  .finding { border-top: 1px solid var(--line); padding-top: 36px; margin-top: 44px; }
+  .finding .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .pill { font: 600 12px/1 var(--sans); padding: 6px 10px; border-radius: 999px; background: rgba(228, 191, 108, 0.12); color: var(--gold); letter-spacing: 0.02em; }
+  .pill.p1 { background: rgba(240, 160, 160, 0.14); color: #f4b4b4; }
+  .pill.gray { background: rgba(255, 255, 255, 0.06); color: var(--text-2); }
+  .cols { display: grid; gap: 18px; grid-template-columns: 1fr; }
+  @media (min-width: 820px) { .cols { grid-template-columns: 1fr 1fr; } }
+  .cols h3 { margin-top: 0; }
+  .fix li::marker { color: var(--gold); }
+  .bad li::marker { color: var(--bad); }
+
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .pair.wide { grid-template-columns: 1fr; }
+  .pairs { display: grid; gap: 22px; grid-template-columns: 1fr; margin-top: 8px; }
+  @media (min-width: 820px) { .pairs.two { grid-template-columns: 1fr 1fr; } }
+  figure { margin: 0; }
+  figure a { display: block; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #070b1f; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { margin-top: 8px; font: 600 13px/1.3 var(--sans); color: var(--text-3); display: flex; align-items: center; gap: 8px; }
+  figcaption::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); flex: none; }
+  figure.after figcaption { color: var(--gold); }
+  figure.after figcaption::before { background: var(--gold); }
+  .pair-title { font: 600 14px/1.3 var(--sans); color: var(--text); margin: 18px 0 -8px; }
+
+  /* дизайн-система */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .sw { border-radius: 14px; border: 1px solid var(--line); overflow: hidden; background: var(--panel); }
+  .sw i { display: block; height: 56px; }
+  .sw span { display: block; padding: 8px 10px; font-size: 13px; line-height: 1.35; }
+  .sw span b { display: block; font-size: 13px; }
+  .type-row { display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .type-row small { color: var(--text-3); font-size: 12px; line-height: 1.4; }
+  @media (max-width: 600px) { .type-row { grid-template-columns: 1fr; gap: 4px; } }
+  .demo-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 48px; padding: 0 22px; border-radius: 12px; font: 600 16px/1 var(--sans); border: 0; }
+  .btn.primary { background: linear-gradient(180deg, #f1d58f, #d9ab4f); color: #1a1206; box-shadow: 0 8px 22px rgba(217, 171, 79, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
+  .btn.secondary { background: transparent; border: 1px solid rgba(228, 191, 108, 0.45); color: var(--gold); }
+  .btn.text { background: none; color: var(--gold); padding: 0 4px; }
+  .radii { display: flex; gap: 14px; flex-wrap: wrap; }
+  .radii div { width: 96px; height: 64px; border: 1px solid var(--gold); background: rgba(228, 191, 108, 0.08); display: grid; place-items: center; font-size: 13px; color: var(--text); }
+
+  .waves { display: grid; gap: 14px; }
+  .wave { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .wave h3 { margin: 0; font: 400 24px/1.2 var(--serif); }
+  .wave .when { font-size: 14px; color: var(--text-3); }
+  .good { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .good .card b { display: block; color: var(--text); margin-bottom: 4px; }
+  footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--text-3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">← Все страницы</a>
+  <div class="kicker" style="margin-top:22px">Вижу · 28 сентября 2026</div>
+  <h1>Визуальный аудит 2.0: что мешает сайту выглядеть цельным продуктом</h1>
+  <p class="lead">Проверены 17 разделов приложения и статичные SEO-страницы: телефон и компьютер, тёмная и светлая тема. Основа — сайт вместе со слоем v2, который сейчас выкладывается. Кроме скриншотов, собраны вычисленные стили всех видимых элементов, поэтому выводы опираются на цифры. «После» на картинках — не рисунки, а прототип правок, наложенный на живой сайт в тестовом браузере. Сам сайт при этом не менялся.</p>
+
+  <nav class="toc" aria-label="Оглавление">
+    <a href="#verdict">Вывод</a><a href="#numbers">Цифры</a><a href="#f1">1. Два разных сайта</a><a href="#f2">2. Типографика</a><a href="#f3">3. Компоненты</a>
+    <a href="#f4">4. «Сегодня»</a><a href="#f5">5. Навигация</a><a href="#f6">6. Формы и детали</a><a href="#f7">7. Без макета</a><a href="#system">Дизайн-система</a><a href="#plan">План</a>
+  </nav>
+
+  <section id="verdict">
+    <div class="kicker">Вывод</div>
+    <h2>Отдельные экраны красивые, системы между ними нет</h2>
+    <p>Сильные стороны сайта — ночь с золотом, глаза, иллюстрации разделов, карточки «О тебе», тарифы. Это уровень хорошего продукта. Но ощущение «продуманного продукта» возникает, когда одинаковые вещи везде выглядят одинаково. Здесь это правило нарушается на каждом шагу: в заголовках разные шрифты, у кнопок разная высота, закрытые разделы оформлены пятью способами, а около 630 страниц из поиска выглядят как другой сайт.</p>
+    <div class="verdict">
+      <div class="card"><b>Главная проблема</b>Нет дизайн-системы. Каждый экран делали отдельно, поэтому накопились 36 размеров шрифта и 18 радиусов скругления.</div>
+      <div class="card"><b>Самое заметное</b>Люди приходят из поиска на статичные страницы. Там системный шрифт, кислотно-жёлтая кнопка, зелёные и красные заголовки и нет ни шапки, ни глаз.</div>
+      <div class="card"><b>Что делать</b>Закрепить небольшой набор правил (цвета, 8 размеров шрифта, 3 радиуса, 3 вида кнопок, общие компоненты) и привести к нему всё за три волны. Первая волна делается слоем, без пересборки сайта.</div>
+    </div>
+  </section>
+
+  <section id="numbers">
+    <div class="kicker">Замер</div>
+    <h2>Цифры: сейчас и цель</h2>
+    <p class="muted">11 основных страниц, телефон 390 px, тёмная тема, гость с заполненным профилем. Считались стили всех видимых элементов.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Что</th><th>Сейчас</th><th>Цель</th><th>Почему важно</th></tr></thead>
+        <tbody>
+          <tr><td>Размеров шрифта</td><td class="num"><span class="now">36</span></td><td class="num"><span class="goal">8</span></td><td>Когда размеров много, глаз не понимает, что главное, а что второстепенное.</td></tr>
+          <tr><td>Разных текстовых стилей (шрифт + размер + жирность)</td><td class="num"><span class="now">85</span></td><td class="num"><span class="goal">12</span></td><td>Один и тот же вид заголовка на каждой странице — главный признак цельного продукта.</td></tr>
+          <tr><td>Вариантов заголовков крупнее 20 px</td><td class="num"><span class="now">25</span></td><td class="num"><span class="goal">4</span></td><td>Сейчас заголовки набраны и серифом, и жирным гротеском, есть жирность 650 и 750.</td></tr>
+          <tr><td>Текстов мельче 12 px</td><td class="num"><span class="now">136</span></td><td class="num"><span class="goal">0</span></td><td>Плюс почти весь текст карточек тарифов. Бывает и 7–9 px: «Бонусы», «Войти», плашка «Баланс возможностей». На телефоне это не читается.</td></tr>
+          <tr><td>Радиусов скругления</td><td class="num"><span class="now">18</span></td><td class="num"><span class="goal">3</span></td><td>7, 8, 9, 10, 11, 12, 13, 16, 17, 18, 20, 21, 22, 23, 24, 26 px… Разница в 1–2 px выглядит как небрежность.</td></tr>
+          <tr><td>Цветов текста</td><td class="num"><span class="now">48</span></td><td class="num"><span class="goal">5</span></td><td>Шесть оттенков «белого» и пять оттенков «золотого» рядом друг с другом.</td></tr>
+          <tr><td>Главных кнопок</td><td class="num"><span class="now">≈10 видов</span></td><td class="num"><span class="goal">3 вида</span></td><td>Высота от 34 до 52 px, текст от 9 до 16 px, жирность от 500 до 750.</td></tr>
+          <tr><td>Страниц в другом стиле</td><td class="num"><span class="now">≈630</span></td><td class="num"><span class="goal">0</span></td><td>468 страниц вики матрицы, 106 — квадрата, 23 аркана, 11 — прогностики.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="finding" id="f1">
+    <div class="meta"><span class="pill p1">Приоритет 1</span><span class="pill gray">≈630 страниц</span><span class="pill gray">Волна 1</span></div>
+    <h2>1. Два разных сайта: приложение и страницы из поиска</h2>
+    <div class="cols">
+      <div class="bad"><h3>Сейчас</h3><ul>
+        <li>Статичные страницы (вики матрицы, арканы, качества и цифры квадрата, личный день, карта дня) свёрстаны своим встроенным стилем. Слой v2 на них не попадает: скрипт выкладки добавляет его только в 23 страницы приложения.</li>
+        <li>Системный шрифт вместо Onest и Noto Serif Display. Персиковый текст. Кнопка с кислотно-жёлтым градиентом <b>#f2b705</b>. Заголовки зелёные, красные и голубые. Цветные полосы на карточках.</li>
+        <li>Нет шапки ВИЖУ и глаз. Человек из поиска не узнаёт бренд и не видит главного действия.</li>
+        <li>Регистр «Рассчитать свою Матрицу Судьбы» и дефис вместо тире: «10 Аркан - Колесо Фортуны».</li>
+      </ul></div>
+      <div class="fix"><h3>Как исправить</h3><ul>
+        <li>Один файл <b>viju-static.css</b> и маленький скрипт шапки для всех шаблонов. Классы у шаблонов общие (<code>.wrap</code>, <code>.card</code>, <code>.cta</code>, <code>h1–h3</code>), поэтому одного файла хватит на все ~630 страниц.</li>
+        <li>Шапка: ВИЖУ, глаза, кнопка «Мой расчёт». Шрифты, цвета, карточки и главная кнопка те же, что в приложении.</li>
+        <li>Цветные заголовки заменить на нейтральные с цветной точкой: золото — «плюс», фиолетовый — «минус».</li>
+        <li>В скрипт выкладки добавить подключение этого файла в статичные HTML. Это та же схема, что у слоя v2.</li>
+      </ul></div>
+    </div>
+    <div class="pairs two">
+      <div><div class="pair-title">Аркан 7, телефон</div><div class="pair">
+        <figure><a href="img/st-arcana-m-before.jpg"><img src="img/st-arcana-m-before.jpg" alt="Страница аркана сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/st-arcana-m-after.jpg"><img src="img/st-arcana-m-after.jpg" alt="Страница аркана после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+      <div><div class="pair-title">Вики матрицы, телефон</div><div class="pair">
+        <figure><a href="img/st-wiki-m-before.jpg"><img src="img/st-wiki-m-before.jpg" alt="Вики матрицы сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/st-wiki-m-after.jpg"><img src="img/st-wiki-m-after.jpg" alt="Вики матрицы после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+    </div>
+    <div class="pair-title">Аркан 7, компьютер</div>
+    <div class="pair wide">
+      <figure><a href="img/st-arcana-d-before.jpg"><img src="img/st-arcana-d-before.jpg" alt="Аркан на компьютере сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+      <figure class="after"><a href="img/st-arcana-d-after.jpg"><img src="img/st-arcana-d-after.jpg" alt="Аркан на компьютере после" loading="lazy"></a><figcaption>После</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="finding" id="f2">
+    <div class="meta"><span class="pill p1">Приоритет 1</span><span class="pill gray">все страницы</span><span class="pill gray">Волна 1</span></div>
+    <h2>2. Типографика: иерархия перевёрнута, шрифты смешаны</h2>
+    <div class="cols">
+      <div class="bad"><h3>Сейчас</h3><ul>
+        <li><b>Заголовок раздела крупнее заголовка страницы.</b> «Расшифровка Квадрата» набрана в 36 px, а «Квадрат Пифагора» — в 27 px. В матрице «Детальная расшифровка» — 32 px против 27 px.</li>
+        <li><b>FAQ набран жирным гротеском,</b> а все остальные страницы — серифом. Карточка FAQ сжата в колонку шириной 326 px, как форма на главной.</li>
+        <li><b>Английский Title Case:</b> «Золотая Середина», «В Поисках Источника», «Расшифровка Квадрата», «Войти или Зарегистрироваться».</li>
+        <li><b>Дефис вместо тире:</b> «Укажите город рождения - без координат…».</li>
+      </ul></div>
+      <div class="fix"><h3>Как исправить</h3><ul>
+        <li>Шкала из 8 размеров: 12 / 14 / 16 / 18 / 22 / 28 / 36 / 48 (ниже, в дизайн-системе).</li>
+        <li>Заголовок страницы — Noto Serif 28–30 px. Раздел — Noto Serif 22–24 px. Заголовок внутри карточки — Onest 18/600. Больше ничего.</li>
+        <li>Правила для текстов: регистр как в предложении, тире «—», кавычки «ёлочки». Проверку можно автоматизировать при сборке переводов.</li>
+      </ul></div>
+    </div>
+    <div class="pairs two">
+      <div><div class="pair-title">Квадрат: раздел меньше заголовка страницы</div><div class="pair">
+        <figure><a href="img/square2-before.jpg"><img src="img/square2-before.jpg" alt="Расшифровка квадрата сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/square2-after.jpg"><img src="img/square2-after.jpg" alt="Расшифровка квадрата после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+      <div><div class="pair-title">FAQ: тот же шрифт, что везде, и на всю ширину</div><div class="pair">
+        <figure><a href="img/faq-before.jpg"><img src="img/faq-before.jpg" alt="FAQ сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/faq-after.jpg"><img src="img/faq-after.jpg" alt="FAQ после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="finding" id="f3">
+    <div class="meta"><span class="pill">Приоритет 2</span><span class="pill gray">Развитие, Прогностика, Диалог, Матрица</span><span class="pill gray">Волны 1–2</span></div>
+    <h2>3. Одно и то же нарисовано по-разному</h2>
+    <div class="cols">
+      <div class="bad"><h3>Сейчас</h3><ul>
+        <li><b>Закрытые разделы — пять разных видов.</b> В «Прогностике» карточка лежит внутри другой карточки. В «Матрице» блок вложен в рамку. В «Диалоге» пустое окно на весь экран с текстом внизу. В «Сегодня» — карточка без кнопки. В «Астрологии» — своя форма.</li>
+        <li><b>Карточки разделов.</b> В «О тебе» есть надпись, заголовок, описание и «Открыть». В «Развитии» только слово: непонятно, что внутри и куда нажимать.</li>
+        <li><b>Кнопки:</b> около десяти вариантов главной кнопки.</li>
+      </ul></div>
+      <div class="fix"><h3>Как исправить</h3><ul>
+        <li>Один компонент «Закрытый раздел»: иконка в золотом круге, название серифом, одна строка пользы, главная кнопка. Используется везде.</li>
+        <li>Карточка «О тебе» становится эталоном для всех хабов: «Развитие», «Совместимость», «Семья».</li>
+        <li>Гостю в «Диалоге» показывать пример разговора. Так понятно, ради чего регистрироваться, а экран не пустой.</li>
+      </ul></div>
+    </div>
+    <div class="pairs two">
+      <div><div class="pair-title">«Развитие»: карточки как в «О тебе»</div><div class="pair">
+        <figure><a href="img/growth-before.jpg"><img src="img/growth-before.jpg" alt="Развитие сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/growth-after.jpg"><img src="img/growth-after.jpg" alt="Развитие после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+      <div><div class="pair-title">Закрытый раздел: одна карточка вместо двух</div><div class="pair">
+        <figure><a href="img/progn-before.jpg"><img src="img/progn-before.jpg" alt="Прогностика сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/progn-after.jpg"><img src="img/progn-after.jpg" alt="Прогностика после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+      <div><div class="pair-title">«Диалог» для гостя: пример разговора</div><div class="pair">
+        <figure><a href="img/dialog-before.jpg"><img src="img/dialog-before.jpg" alt="Диалог сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/dialog-after.jpg"><img src="img/dialog-after.jpg" alt="Диалог после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+    </div>
+    <p class="muted" style="margin-top:14px">Тексты «Записи состояний дня и разбор ВИЖУ», «Значения карт и расклады», «Короткие медитации…» и пример разговора — черновики для макета, их нужно написать.</p>
+  </section>
+
+  <!-- 4 -->
+  <section class="finding" id="f4">
+    <div class="meta"><span class="pill">Приоритет 2</span><span class="pill gray">главный ежедневный экран</span><span class="pill gray">Волны 1–2</span></div>
+    <h2>4. «Сегодня»: пустоты, мелочь и действие без кнопки</h2>
+    <div class="cols">
+      <div class="bad"><h3>Сейчас</h3><ul>
+        <li><b>Карта дня у гостя.</b> Текст толкования для гостя пустой — так задумано в коде. Из-за этого левая половина карточки пустует, «Подробнее» и «Обсудить» висят в воздухе, дата набрана в 10 px.</li>
+        <li><b>«Пригласи друга».</b> В одной полосе три мелких элемента: «БОНУСЫ» в 7 px, заголовок по центру в две строки и «Войти» в 9 px.</li>
+        <li><b>«Войти для расшифровки»</b> — вся карточка кликабельная, но это никак не видно: нет кнопки.</li>
+      </ul></div>
+      <div class="fix"><h3>Как исправить</h3><ul>
+        <li>Карта дня: слева карта, справа «Карта дня · 28 сентября», название, одна строка смысла (гостю — приглашение к полному толкованию) и две кнопки.</li>
+        <li>Приглашение: иконка, «Пригласи друга в ВИЖУ», строка пользы «По бонусу вам обоим» и одна кнопка.</li>
+        <li>У каждой кликабельной карточки видимое действие: кнопка или «Открыть ›».</li>
+      </ul></div>
+    </div>
+    <div class="pairs two">
+      <div><div class="pair-title">Тёмная тема</div><div class="pair">
+        <figure><a href="img/today-before.jpg"><img src="img/today-before.jpg" alt="Сегодня сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/today-after.jpg"><img src="img/today-after.jpg" alt="Сегодня после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+      <div><div class="pair-title">Светлая тема</div><div class="pair">
+        <figure><a href="img/today-l-before.jpg"><img src="img/today-l-before.jpg" alt="Сегодня в светлой теме сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/today-l-after.jpg"><img src="img/today-l-after.jpg" alt="Сегодня в светлой теме после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="finding" id="f5">
+    <div class="meta"><span class="pill">Приоритет 2</span><span class="pill gray">весь сайт</span><span class="pill gray">Волна 1</span></div>
+    <h2>5. Навигация: сбитая строка на телефоне, меню внизу на компьютере</h2>
+    <div class="cols">
+      <div class="bad"><h3>Сейчас</h3><ul>
+        <li>На телефоне плашка «Новинка» над «Развитием» сдвигает иконку и подпись вниз: подписи в меню стоят на разной высоте.</li>
+        <li>На компьютере разделы — полоса текстовых ссылок у нижнего края экрана. Так делают в мобильных приложениях. На сайте разделы ищут сверху.</li>
+      </ul></div>
+      <div class="fix"><h3>Как исправить</h3><ul>
+        <li>«Новинка» — золотая точка у иконки. Все подписи на одной линии, место под бейдж не нужно.</li>
+        <li>На компьютере (от 1024 px) разделы переносятся под шапку с глазами. Активный раздел подчёркнут золотом.</li>
+      </ul></div>
+    </div>
+    <div class="pair-title">«О тебе», компьютер</div>
+    <div class="pair wide">
+      <figure><a href="img/about-d-before.jpg"><img src="img/about-d-before.jpg" alt="О тебе на компьютере сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+      <figure class="after"><a href="img/about-d-after.jpg"><img src="img/about-d-after.jpg" alt="О тебе на компьютере после" loading="lazy"></a><figcaption>После</figcaption></figure>
+    </div>
+    <div class="pair-title">«Сегодня», компьютер</div>
+    <div class="pair wide">
+      <figure><a href="img/today-d-before.jpg"><img src="img/today-d-before.jpg" alt="Сегодня на компьютере сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+      <figure class="after"><a href="img/today-d-after.jpg"><img src="img/today-d-after.jpg" alt="Сегодня на компьютере после" loading="lazy"></a><figcaption>После</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="finding" id="f6">
+    <div class="meta"><span class="pill">Приоритет 3</span><span class="pill gray">Главная, Астрология, Квадрат</span><span class="pill gray">Волны 1–2</span></div>
+    <h2>6. Формы и детали, по которым видно небрежность</h2>
+    <div class="cols">
+      <div class="bad"><h3>Сейчас</h3><ul>
+        <li><b>Главная.</b> Подписи «ИМЯ» и «ПОЛ» стоят на разной высоте. Переключатель пола ниже поля имени (38 и 50 px). Кнопка темы выглядит как ещё одно поле формы.</li>
+        <li><b>Астрология.</b> На кнопке «Рассчитать» белый текст на золоте, контраст около 1,8:1 (нужно от 4,5:1). Красная ошибка «Укажите город» видна сразу, до того как человек что-то сделал. Иконка пустого состояния похожа на битую картинку.</li>
+        <li><b>Квадрат.</b> Цвет цифр несёт смысл: золото — сильная сторона, синий — зона роста. Но синий взят из чужой палитры (ярко-голубой <b>#38bdf8</b>), а легенды нет, и смысл не считывается.</li>
+      </ul></div>
+      <div class="fix"><h3>Как исправить</h3><ul>
+        <li>Все поля 48–50 px, подписи 12/600 на одной линии. Тема — тихая текстовая кнопка с солнцем или луной. <b>Она остаётся на первом экране</b>, как вы решили.</li>
+        <li>Все главные кнопки с тёмным текстом на золоте. Ошибка появляется только после попытки отправить форму.</li>
+        <li>Синий заменить на «лунный» <b>#a9b8ec</b> из гаммы бренда и добавить легенду над сеткой. Смысл цветов сохраняется.</li>
+      </ul></div>
+    </div>
+    <div class="pairs two">
+      <div><div class="pair-title">Главная: форма</div><div class="pair">
+        <figure><a href="img/home-before.jpg"><img src="img/home-before.jpg" alt="Главная сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/home-after.jpg"><img src="img/home-after.jpg" alt="Главная после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+      <div><div class="pair-title">Астрология</div><div class="pair">
+        <figure><a href="img/astro-before.jpg"><img src="img/astro-before.jpg" alt="Астрология сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/astro-after.jpg"><img src="img/astro-after.jpg" alt="Астрология после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+      <div><div class="pair-title">Квадрат: цвета со смыслом и легендой</div><div class="pair">
+        <figure><a href="img/square-before.jpg"><img src="img/square-before.jpg" alt="Квадрат сейчас" loading="lazy"></a><figcaption>Сейчас</figcaption></figure>
+        <figure class="after"><a href="img/square-after.jpg"><img src="img/square-after.jpg" alt="Квадрат после" loading="lazy"></a><figcaption>После</figcaption></figure></div></div>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="finding" id="f7">
+    <div class="meta"><span class="pill gray">Волна 3</span></div>
+    <h2>7. Что ещё поправить (без макета)</h2>
+    <div class="cols">
+      <div><h3>Тарифы</h3><ul>
+        <li>В светлой теме страница тарифов остаётся тёмной: тема «ломается» при переходе.</li>
+        <li>На телефоне три колонки по 120 px. «Сообщений ВИЖУ в неделю» переносится на три строки. Плашка «Баланс возможностей» набрана в 7 px, «Что входит» — в 8 px, сам список и «/ месяц» — в 9–10 px.</li>
+        <li>Лучше показать тарифы стопкой: по умолчанию раскрыт Max, Mini и Ultra свёрнуты. Или сделать карусель с точками.</li>
+      </ul></div>
+      <div><h3>Матрица и вкладки</h3><ul>
+        <li>На одной странице четыре вида вкладок: пилюли с иконками, подчёркивание, плитки в рамке, горизонтальный скролл. Нужно два: переключатель вида и вкладки разделов.</li>
+        <li>Горизонтальные вкладки обрезаны без подсказки («Карми…»). Нужно затухание у края.</li>
+        <li>Карточки линий матрицы выровнены по центру, а остальные карточки сайта — по левому краю. Выбрать одно правило.</li>
+        <li>Подписи возрастов на карте матрицы на телефоне около 7 px. Минимум 10 px или увеличение по нажатию.</li>
+      </ul></div>
+      <div><h3>Светлая тема</h3><ul>
+        <li>Главные кнопки двух цветов: «Собрать профиль» тёмно-коричневая, «Сделать расклад» ярко-жёлтая. Нужна одна.</li>
+        <li>Ошибки розовые на кремовом фоне выпадают из гаммы. Нужен спокойный терракотовый.</li>
+      </ul></div>
+      <div><h3>Мелочи</h3><ul>
+        <li>Выбор «Движение» в подвале — стандартный системный список. Оформить как остальные поля (в прототипе сделано).</li>
+        <li>Адрес /semya открывает те же три карточки, что и «Совместимость». Если «Семья» — отдельный раздел, ему нужен свой экран.</li>
+        <li>У страницы «Диалог» нет общей шапки с глазами: при входе по прямой ссылке бренд не виден.</li>
+      </ul></div>
+    </div>
+    <div class="pairs two" style="margin-top:14px">
+      <div class="pair">
+        <figure><a href="img/m-dark-tariffs-0.jpg"><img src="img/m-dark-tariffs-0.jpg" alt="Тарифы на телефоне" loading="lazy"></a><figcaption>Тарифы: три узкие колонки</figcaption></figure>
+        <figure><a href="img/m-light-tariffs-0.jpg"><img src="img/m-light-tariffs-0.jpg" alt="Тарифы в светлой теме" loading="lazy"></a><figcaption>Светлая тема: тарифы тёмные</figcaption></figure>
+      </div>
+      <div class="pair">
+        <figure><a href="img/m-dark-square-1.jpg"><img src="img/m-dark-square-1.jpg" alt="Вкладки обрезаны" loading="lazy"></a><figcaption>Вкладки «Карми…» без затухания</figcaption></figure>
+        <figure><a href="img/m-dark-matrix-2.jpg"><img src="img/m-dark-matrix-2.jpg" alt="Карточки линий матрицы" loading="lazy"></a><figcaption>Центрированные карточки матрицы</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="good">
+    <div class="kicker">Что оставить</div>
+    <h2>Это уже работает — от этого отталкиваться</h2>
+    <div class="good">
+      <div class="card"><b>Карточки «О тебе»</b>Надпись, серифный заголовок, строка пользы, «Открыть» и иллюстрация. Лучший компонент сайта, его стоит сделать общим.</div>
+      <div class="card"><b>Иллюстрации разделов</b>Единый стиль: золото, фиолетовый и глубокий синий. Их хватит на все хабы и пустые состояния.</div>
+      <div class="card"><b>Глаза и шапка</b>Узнаваемый образ. Его стоит донести и до статичных страниц.</div>
+      <div class="card"><b>Тарифы</b>Сильная подача. Не хватает только мобильной раскладки и светлой темы.</div>
+    </div>
+  </section>
+
+  <section id="system">
+    <div class="kicker">Предложение</div>
+    <h2>Дизайн-система «Вижу» v1</h2>
+    <p>Короткий набор правил, по которому собирается любой новый экран. Это и есть то, что делает продукт «выверенным».</p>
+
+    <h3>Цвета: 5 для текста, 1 акцент, 1 характер</h3>
+    <div class="swatches">
+      <div class="sw"><i style="background:#f2eee6"></i><span><b>Текст</b>#F2EEE6 · заголовки, важное</span></div>
+      <div class="sw"><i style="background:#b7bdd0"></i><span><b>Текст 2</b>#B7BDD0 · основной текст</span></div>
+      <div class="sw"><i style="background:#858da8"></i><span><b>Текст 3</b>#858DA8 · подписи, даты</span></div>
+      <div class="sw"><i style="background:#e4bf6c"></i><span><b>Золото</b>#E4BF6C · действия, надписи, активное</span></div>
+      <div class="sw"><i style="background:linear-gradient(180deg,#f1d58f,#d9ab4f)"></i><span><b>Кнопка</b>#F1D58F → #D9AB4F, текст #1A1206</span></div>
+      <div class="sw"><i style="background:#9b7ce8"></i><span><b>Фиолетовый</b>#9B7CE8 · веки, руки оракула, «минус»</span></div>
+      <div class="sw"><i style="background:#a9b8ec"></i><span><b>Лунный</b>#A9B8EC · второй смысловой цвет</span></div>
+      <div class="sw"><i style="background:#080d24"></i><span><b>Фон</b>#080D24 и поверхность 3,5% белого</span></div>
+    </div>
+
+    <h3>Шрифты: 8 размеров, 2 гарнитуры</h3>
+    <div class="type-row"><small>48 · Noto Serif 300<br>обложка</small><div style="font:300 48px/1.05 var(--serif);color:var(--text)">ВИЖУ</div></div>
+    <div class="type-row"><small>36 / 28 · Noto Serif 400<br>заголовок страницы</small><div style="font:400 28px/1.15 var(--serif);color:var(--text)">Квадрат Пифагора</div></div>
+    <div class="type-row"><small>22 · Noto Serif 400<br>раздел, карточка</small><div style="font:400 22px/1.2 var(--serif);color:var(--gold)">Расшифровка квадрата</div></div>
+    <div class="type-row"><small>18 · Onest 600<br>заголовок в карточке</small><div style="font:600 18px/1.35 var(--sans);color:var(--text)">Психологический портрет</div></div>
+    <div class="type-row"><small>16 · Onest 400<br>основной текст</small><div style="font:400 16px/1.6 var(--sans)">Сила воли, способность отстаивать свои интересы, лидерские качества.</div></div>
+    <div class="type-row"><small>14 · Onest 400/500<br>вторичный текст, кнопки</small><div style="font:400 14px/1.5 var(--sans)">Текущие периоды, личные циклы и движение вперёд.</div></div>
+    <div class="type-row"><small>12 · Onest 600, 0,12em<br>надпись над заголовком</small><div class="kicker">Личная карта</div></div>
+
+    <h3>Скругления: три значения</h3>
+    <div class="radii"><div style="border-radius:12px">12 · поля, кнопки</div><div style="border-radius:20px">20 · карточки</div><div style="border-radius:999px">999 · чипы</div></div>
+
+    <h3>Кнопки: три вида, одна высота 48 px</h3>
+    <div class="demo-row"><span class="btn primary">Собрать профиль</span><span class="btn secondary">Обсудить с ВИЖУ</span><span class="btn text">Открыть ›</span></div>
+
+    <h3>Отступы и компоненты</h3>
+    <ul>
+      <li>Сетка 4 px: 4 / 8 / 12 / 16 / 24 / 32 / 48. Поля экрана на телефоне — 16 px, между карточками — 12 px, внутри карточки — 20 px.</li>
+      <li>Общие компоненты: карточка раздела («О тебе»), закрытый раздел, поле формы, переключатель вида, вкладки, плитка числа, бейдж «новинка», пустое состояние.</li>
+      <li>Тексты: регистр как в предложении, тире «—», кавычки «ёлочки», не мельче 12 px (на карте матрицы — не мельче 10 px).</li>
+    </ul>
+  </section>
+
+  <section id="plan">
+    <div class="kicker">План</div>
+    <h2>Три волны доводки</h2>
+    <div class="waves">
+      <div class="card wave"><h3>Волна 1 · слоем, без пересборки</h3><div class="when">Та же схема выкладки, что у слоя v2: кандидат, проверка, запечатывание, публикация.</div><ul>
+        <li>Общий стиль и шапка для ~630 статичных страниц (раздел 1).</li>
+        <li>Токены: цвета, шкала шрифтов, радиусы, поля 16 px.</li>
+        <li>Заголовки: иерархия, FAQ серифом, минимум 12 px.</li>
+        <li>Единые главные и второстепенные кнопки, тёмный текст на золоте.</li>
+        <li>Нижнее меню: точка вместо плашки. Меню разделов сверху на компьютере.</li>
+        <li>Закрытые разделы одним компонентом, квадрат с лунным цветом и легендой, форма на главной, «Движение» в подвале.</li>
+      </ul></div>
+      <div class="card wave"><h3>Волна 2 · правки в исходниках</h3><div class="when">Нужна правка компонентов и текстов, потом полная сборка по правилам выкладки.</div><ul>
+        <li>Карта дня, приглашение и «Войти для расшифровки» на экране «Сегодня».</li>
+        <li>Описания и «Открыть» в «Развитии». Свой экран для «Семьи».</li>
+        <li>Диалог для гостя с примером разговора и общей шапкой.</li>
+        <li>Тексты: регистр, тире, кавычки. FAQ отдельной страницей.</li>
+        <li>Астрология: ошибка после отправки, нормальная иллюстрация пустого состояния.</li>
+      </ul></div>
+      <div class="card wave"><h3>Волна 3 · полировка</h3><div class="when">Когда система закреплена.</div><ul>
+        <li>Тарифы на телефоне стопкой или каруселью, тарифы в светлой теме.</li>
+        <li>Два вида вкладок вместо четырёх, затухание у края.</li>
+        <li>Матрица: одно выравнивание карточек, читаемые подписи на карте.</li>
+        <li>Светлая тема: одна главная кнопка, спокойные цвета ошибок.</li>
+        <li>Пустые состояния и состояния загрузки в одном стиле с иллюстрациями разделов.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <footer>
+    <p><b>Как это проверено.</b> Живой сайт vijuai.ru со слоем v2 открывался в тестовом браузере только на чтение: все отправки данных и аналитика заблокированы. Гость с заполненным профилем, телефон 390 px и компьютер 1440 px, тёмная и светлая тема. «После» — CSS и небольшой скрипт поверх живого сайта. Они лежат отдельно и на сайт не выкладывались.</p>
+    <p><b>Файлы прототипа:</b> <a href="prototype/viju-proto.css">viju-proto.css</a>, <a href="prototype/viju-proto.js">viju-proto.js</a> (приложение), <a href="prototype/viju-static-proto.css">viju-static-proto.css</a>, <a href="prototype/viju-static-proto.js">viju-static-proto.js</a> (статичные страницы). Это черновик для макетов, а не готовый к выкладке код. С него удобно начинать волну 1.</p>
+    <p><b>Что не проверено.</b> Экраны оплаченных тарифов (полные расшифровки, чат с ответами), админка, реальные iPhone и Safari. Их стоит посмотреть до выкладки волны 2.</p>
+  </footer>
+</div>
+</body>
+</html>

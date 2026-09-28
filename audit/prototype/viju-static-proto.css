@@ -1,0 +1,75 @@
+/* Прототип: единый вид статичных SEO-страниц (вики, арканы, квадрат, личный день).
+   Та же типографика, цвета, карточки и кнопки, что в приложении. */
+@font-face { font-family: 'Onest'; font-style: normal; font-weight: 400 700; font-display: swap; src: url('/fonts/onest-cyrillic.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Onest'; font-style: normal; font-weight: 400 700; font-display: swap; src: url('/fonts/onest-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215; }
+@font-face { font-family: 'Noto Serif Display'; font-style: normal; font-weight: 300 500; font-display: swap; src: url('/fonts/noto-serif-display-cyrillic.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: 'Noto Serif Display'; font-style: normal; font-weight: 300 500; font-display: swap; src: url('/fonts/noto-serif-display-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215; }
+
+:root {
+  --ds-bg: #080d24; --ds-surface: rgba(255, 255, 255, 0.035); --ds-line: rgba(228, 191, 108, 0.16); --ds-line-soft: rgba(242, 238, 230, 0.10);
+  --ds-text: #f2eee6; --ds-text-2: #b7bdd0; --ds-text-3: #858da8;
+  --ds-gold: #e4bf6c; --ds-gold-soft: rgba(228, 191, 108, 0.12); --ds-violet: #9b7ce8;
+  --ds-serif: 'Noto Serif Display', Georgia, serif; --ds-sans: 'Onest', system-ui, -apple-system, sans-serif;
+}
+html body {
+  font-family: var(--ds-sans); font-size: 16px; line-height: 1.6; color: var(--ds-text-2);
+  background: var(--ds-bg) radial-gradient(1200px 520px at 50% -140px, rgba(123, 92, 214, 0.22), transparent 70%) no-repeat;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+html body a { color: var(--ds-gold); text-decoration: none; }
+html body a:hover { text-decoration: underline; text-underline-offset: 3px; }
+html body .wrap { max-width: 760px; padding: 20px 16px 64px; }
+
+/* Шапка как в приложении: слово ВИЖУ и главный вход */
+.vs-header { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; padding: 0 16px; background: rgba(8, 13, 36, 0.86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--ds-line-soft); }
+.vs-header__mark { font: 300 20px/1 var(--ds-serif); letter-spacing: 0.32em; color: var(--ds-gold) !important; text-decoration: none !important; }
+.vs-header__eyes { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 84px; height: 26px; }
+.vs-header__cta { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(228, 191, 108, 0.45); color: var(--ds-gold) !important; font: 600 14px/1 var(--ds-sans); text-decoration: none !important; }
+@media (min-width: 900px) { .vs-header { padding: 0 max(24px, calc(50vw - 540px)); } }
+
+/* Навигация, крошки */
+html body .topnav, html body .crumbs { font-size: 14px; color: var(--ds-text-3); opacity: 1; margin: 4px 0 20px; }
+html body .topnav a, html body .crumbs a { color: var(--ds-text-2); opacity: 1; }
+
+/* Типографика: серифный заголовок, спокойные подзаголовки */
+html body h1 { font: 400 clamp(30px, 6vw, 44px)/1.12 var(--ds-serif); color: var(--ds-text); letter-spacing: 0; margin: 0 0 12px; text-align: left; }
+html body h2 { font: 400 clamp(22px, 4vw, 28px)/1.2 var(--ds-serif); color: var(--ds-gold); border: 0; padding: 0; margin: 40px 0 12px; }
+html body h3 { font: 600 18px/1.35 var(--ds-sans); color: var(--ds-text); border: 0; padding: 0; margin: 20px 0 8px; }
+html body h4 { font: 600 16px/1.4 var(--ds-sans); color: var(--ds-text); }
+html body .card h3:first-child, html body .card h2:first-child { margin-top: 0; }
+html body p, html body li { color: var(--ds-text-2); }
+html body strong, html body b { color: var(--ds-text); font-weight: 600; }
+html body .sub, html body .lead, html body .archetype { color: var(--ds-text-2); opacity: 1; font-size: 17px; }
+html body .wrap > .sub:first-of-type, html body h1 + .sub { text-align: left; }
+
+/* Карточки: одна поверхность, один радиус, без цветных полос */
+html body .card, html body .item, html body .meaning-box, html body .meditation-box, html body .siddhi-box, html body .history-box, html body .glyph-card, html body .hist-card {
+  background: var(--ds-surface); border: 1px solid var(--ds-line); border-radius: 20px; padding: 20px; box-shadow: none;
+}
+html body .item { border-left-width: 1px; }
+html body .item h3 { font: 400 22px/1.2 var(--ds-serif); color: var(--ds-text); }
+html body .item .arch { color: var(--ds-gold); opacity: 1; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
+html body .upright-box, html body .reversed-box { border-top: 1px solid var(--ds-line); }
+html body .upright-box h3::before, html body .reversed-box h3::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 10px; border-radius: 50%; vertical-align: 2px; background: var(--ds-gold); }
+html body .reversed-box h3::before { background: var(--ds-violet); }
+html body h3.positive, html body h3.negative, html body h3.recommendation { color: var(--ds-text); font: 400 24px/1.2 var(--ds-serif); }
+html body h3.positive::before, html body h3.negative::before, html body h3.recommendation::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 12px; border-radius: 50%; vertical-align: 4px; background: var(--ds-gold); }
+html body h3.negative::before { background: var(--ds-violet); }
+html body h3.recommendation::before { background: #8fb3ea; }
+html body .q-box, html body .med-closing, html body .phil-key, html body .pos { background: var(--ds-gold-soft); border: 0; border-radius: 12px; padding: 14px 16px; }
+html body .phil-key { background: rgba(155, 124, 232, 0.12); }
+html body .tag { background: transparent; border: 1px solid var(--ds-line); color: var(--ds-text-2); border-radius: 999px; padding: 5px 12px; font-size: 13px; }
+html body .interpretation-content h2 { font: 600 18px/1.35 var(--ds-sans); color: var(--ds-text); border: 0; padding: 0; margin: 24px 0 8px; }
+html body .interpretation-content h3 { font: 600 16px/1.4 var(--ds-sans); color: var(--ds-gold); }
+
+/* Кнопка: та же, что «Собрать профиль» в приложении */
+html body .cta {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 24px; border-radius: 12px;
+  background: linear-gradient(180deg, #f1d58f 0%, #d9ab4f 100%); color: #1a1206 !important; font: 600 16px/1.2 var(--ds-sans);
+  box-shadow: 0 8px 24px rgba(217, 171, 79, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.45); text-decoration: none !important; text-align: center;
+}
+html body .muted, html body .legal { color: var(--ds-text-3); opacity: 1; font-size: 13px; }
+html body .nav { border-top: 1px solid var(--ds-line-soft); }
+html body footer { border-top: 1px solid var(--ds-line-soft); color: var(--ds-text-3); opacity: 1; }
+html body footer a { color: var(--ds-text-2); }
+@media (min-width: 720px) { html body .wrap { padding-top: 32px; } }

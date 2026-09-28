@@ -1,0 +1,157 @@
+/* Прототип «Вижу · дизайн-система v1» поверх слоя v2. Только для макетов «после». */
+:root {
+  --ds-text: #f2eee6; --ds-text-2: #b7bdd0; --ds-text-3: #858da8;
+  --ds-gold: #e4bf6c; --ds-gold-soft: rgba(228, 191, 108, 0.12); --ds-line: rgba(228, 191, 108, 0.16); --ds-line-soft: rgba(242, 238, 230, 0.10);
+  --ds-surface: rgba(255, 255, 255, 0.035);
+  --ds-r-control: 12px; --ds-r-card: 20px;
+  --ds-serif: 'Noto Serif Display', Georgia, serif; --ds-sans: 'Onest', system-ui, sans-serif;
+  --ds-btn-grad: linear-gradient(180deg, #f1d58f 0%, #d9ab4f 100%);
+}
+body.theme-light {
+  --ds-text: #1e1a2e; --ds-text-2: #4d4860; --ds-text-3: #7a7489; --ds-line: rgba(122, 90, 26, 0.18); --ds-line-soft: rgba(30, 26, 46, 0.10);
+  --ds-surface: rgba(255, 255, 255, 0.6); --ds-gold: #8a6420;
+}
+
+/* 1. Поля страницы: 16 px от края экрана везде */
+@media (max-width: 767px) {
+  html body .viju-reference-result-frame { padding-left: 16px !important; padding-right: 16px !important; }
+  html body .section-cards-hub__grid, html body .development-hub { gap: 12px; }
+}
+
+/* 2. Один радиус карточек — 20 px */
+html body .glass-card, html body .section-cards-hub__card, html body .admin-day-summary, html body .referral-invite,
+html body .development-hub__diary-launcher, html body .oracle-entry, html body .today-experience__spheres { border-radius: var(--ds-r-card) !important; }
+
+/* 3. Иерархия заголовков: заголовок страницы крупнее заголовков разделов */
+html body main h1:not(.logo-text):not(.interpretation-title) { font-family: var(--ds-serif) !important; font-weight: 400 !important; font-size: 28px !important; letter-spacing: 0 !important; white-space: nowrap; }
+html body main h2.heading-page.heading-page, html body main h2[class=""] { font-family: var(--ds-serif) !important; font-weight: 400 !important; font-size: 24px !important; line-height: 1.2 !important; }
+html body .interpretation-title { font-family: var(--ds-serif) !important; font-weight: 400 !important; }
+html body h1.interpretation-title { font-size: 24px !important; text-transform: lowercase; }
+html body h1.interpretation-title::first-letter { text-transform: uppercase; }
+/* FAQ: заголовок и разделы тем же шрифтом, что остальные страницы */
+html body h1.text-center.font-serif.font-bold { font-family: var(--ds-serif) !important; font-weight: 400 !important; font-size: 30px !important; color: var(--ds-text) !important; white-space: normal !important; text-align: left !important; }
+html body h2.text-xl.font-semibold.border-b { font-family: var(--ds-serif) !important; font-weight: 400 !important; font-size: 22px !important; color: var(--ds-gold) !important; border: 0 !important; }
+
+/* FAQ: страница на всю ширину экрана, а не в узкой колонке формы */
+@media (max-width: 767px) {
+  html body .max-w-4xl.mx-auto.px-4:has(h1.font-serif) { width: 100vw !important; max-width: 100vw !important; margin-left: calc(50% - 50vw) !important; padding: 8px 16px 48px !important; }
+  html body .max-w-4xl.mx-auto.px-4:has(h1.font-serif) > .glass-card { padding: 20px 16px !important; }
+}
+
+/* 4. Кнопки: одна главная, одна второстепенная, одинаковая высота */
+html body .viju-button--primary, html body .btn-gold, html body button.bg-\[var\(--color-primary\)\] {
+  min-height: 48px; border-radius: var(--ds-r-control) !important; background: var(--ds-btn-grad) !important; color: #1a1206 !important;
+  font: 600 16px/1.2 var(--ds-sans) !important; letter-spacing: 0 !important; text-transform: none !important; border: 0 !important;
+  box-shadow: 0 8px 22px rgba(217, 171, 79, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+}
+html body .admin-day-summary__discuss, html body .referral-invite__signin {
+  min-height: 40px; border-radius: var(--ds-r-control) !important; border: 1px solid rgba(228, 191, 108, 0.45) !important; background: transparent !important;
+  color: var(--ds-gold) !important; font: 600 14px/1 var(--ds-sans) !important;
+}
+
+/* 5. Нижнее меню: подписи на одной линии, «новинка» — точка у иконки */
+html body .med-nav-new--mobile { position: absolute !important; top: 8px !important; left: calc(50% + 7px) !important; width: 9px !important; height: 9px !important; min-width: 0 !important; padding: 0 !important;
+  border-radius: 50% !important; font-size: 0 !important; color: transparent !important; background: #f1d58f !important; box-shadow: 0 0 0 2px var(--color-header-bg, #080a21), 0 0 10px rgba(241, 213, 143, 0.7) !important; transform: none !important; }
+html body #tour-mobile-path { padding-top: 2px !important; }
+html body #tour-mobile-path > div { height: 51px !important; }
+
+/* 6. «Сегодня»: карта дня без пустой половины */
+html body .admin-day-summary--mobile { display: grid !important; grid-template-columns: 108px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 16px; row-gap: 8px; padding: 16px !important; align-items: start; }
+html body .admin-day-summary--mobile .admin-day-summary__main { display: contents !important; }
+html body .admin-day-summary--mobile .admin-day-summary__visual { display: flex !important; flex-direction: column; align-items: center; gap: 8px; grid-column: 1; grid-row: 1 / span 3; }
+html body .admin-day-summary--mobile .admin-day-summary__card { width: 108px !important; height: auto !important; }
+html body .admin-day-summary--mobile .admin-day-summary__card img { width: 108px !important; height: auto !important; }
+html body .admin-day-summary--mobile .admin-day-summary__header { grid-column: 2; grid-row: 1; display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; height: auto !important; position: static !important; }
+html body .admin-day-summary--mobile .admin-day-summary__heading-group { display: flex !important; flex-direction: row-reverse !important; gap: 6px !important; justify-content: flex-end; font: 600 12px/1.3 var(--ds-sans) !important; text-transform: uppercase; letter-spacing: 0.1em; }
+html body .admin-day-summary--mobile .admin-day-summary__heading, html body .admin-day-summary--mobile .admin-day-summary__heading span { position: static !important; transform: none !important; font: inherit !important; color: var(--ds-gold) !important; }
+html body .admin-day-summary--mobile .admin-day-summary__date { font: 600 12px/1.3 var(--ds-sans) !important; color: var(--ds-text-3) !important; letter-spacing: 0.1em; }
+html body .admin-day-summary--mobile .admin-day-summary__date::before { content: '· '; }
+html body .admin-day-summary--mobile .admin-day-summary__card-caption, html body .admin-day-summary--mobile .admin-day-summary__card-caption span { font-size: 28px !important; line-height: 1.15 !important; text-align: left !important; position: static !important; height: auto !important; margin: 0 !important; transform: none !important; white-space: nowrap; }
+html body .admin-day-summary--mobile .admin-day-summary__heading-group { position: static !important; height: auto !important; width: auto !important; }
+html body .admin-day-summary--mobile .admin-day-summary__copy { grid-column: 2; grid-row: 2; display: flex !important; flex-direction: column; gap: 12px; align-items: flex-start; }
+html body .admin-day-summary--mobile .admin-day-summary__copy-expand { height: auto !important; min-height: 0 !important; align-items: flex-start !important; text-align: left !important; }
+html body .admin-day-summary--mobile .admin-day-summary__excerpt { height: auto !important; }
+html body .admin-day-summary--mobile .admin-day-summary__copy-text { font-size: 15px !important; color: var(--ds-text-2) !important; }
+html body .admin-day-summary--mobile .admin-day-summary__copy-action { position: static !important; justify-content: flex-start !important; margin-top: 6px; font: 600 14px/1 var(--ds-sans) !important; color: var(--ds-gold) !important; }
+html body .admin-day-summary--mobile .admin-day-summary__discuss { grid-column: 2; grid-row: 3; align-self: end; justify-self: start; position: static !important; margin: 0 !important; }
+html body .admin-day-summary--mobile .admin-day-summary__color, html body .admin-day-summary--mobile .admin-day-summary__color strong { font-size: 12px !important; }
+
+/* «Пригласи друга»: одна строка смысла и одно действие */
+html body .today-referral-plaque { display: grid !important; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; column-gap: 12px; padding: 14px 16px !important; min-height: 72px; }
+html body .today-referral-plaque .referral-invite__offer { grid-column: 1; position: static !important; }
+html body .today-referral-plaque .referral-invite__offer strong { display: none !important; }
+html body .today-referral-plaque .referral-invite__offer svg { width: 22px; height: 22px; color: var(--ds-gold); }
+html body .today-referral-plaque .referral-invite__content { grid-column: 2; position: static !important; text-align: left !important; }
+html body .today-referral-plaque .referral-invite__content h3, html body .today-referral-plaque .referral-invite__content h3 span { display: block !important; font: 600 15px/1.3 var(--ds-sans) !important; text-align: left !important; color: var(--ds-text) !important; white-space: nowrap; }
+html body .today-referral-plaque .referral-invite__content h3::after { content: 'По бонусу вам обоим'; display: block; font: 400 13px/1.3 var(--ds-sans); color: var(--ds-text-3); margin-top: 2px; }
+html body .today-referral-plaque .referral-invite__actions { grid-column: 3; position: static !important; }
+
+/* «Войти для расшифровки»: видно, что это действие */
+html body .today-experience__spheres > button::after { content: 'Войти'; display: inline-flex; align-items: center; justify-content: center; margin-top: 14px; height: 40px; padding: 0 18px;
+  border-radius: var(--ds-r-control); border: 1px solid rgba(228, 191, 108, 0.45); color: var(--ds-gold); font: 600 14px/1 var(--ds-sans); }
+html body .today-experience__spheres strong { font-size: 24px !important; font-family: var(--ds-serif) !important; font-weight: 400 !important; }
+
+/* 7. Закрытые разделы: одна карточка, по центру, без «карточки в карточке» */
+html body #tour-analysis-content-prognostics > .glass-card, html body .glass-card:has(> .access-gate) { padding: 0 !important; background: none !important; border: 0 !important; box-shadow: none !important; }
+html body .access-gate { background: var(--ds-surface) !important; border: 1px solid var(--ds-line) !important; border-radius: var(--ds-r-card) !important; padding: 28px 20px !important; }
+html body .access-gate__content { display: flex !important; flex-direction: column !important; align-items: center !important; text-align: center !important; gap: 12px !important; }
+html body .access-gate__icon-wrap { width: 48px !important; height: 48px !important; border-radius: 50% !important; background: var(--ds-gold-soft) !important; color: var(--ds-gold) !important; border: 0 !important; }
+html body .access-gate__text { text-align: center !important; }
+html body .access-gate__section-name { font: 400 24px/1.2 var(--ds-serif) !important; color: var(--ds-text) !important; margin-bottom: 6px !important; }
+html body .access-gate__description { font: 400 15px/1.5 var(--ds-sans) !important; color: var(--ds-text-2) !important; }
+html body .access-gate .viju-button--primary { min-width: 220px; }
+
+/* Диалог для гостя: пример разговора и один понятный вход вместо пустого окна */
+html body .glass-card.rounded-3xl.p-8:has(> .max-w-sm .btn-gold) { flex-direction: column !important; justify-content: flex-end !important; gap: 28px; padding: 24px 20px 28px !important; border-radius: var(--ds-r-card) !important; }
+.proto-chat { width: 100%; display: flex; flex-direction: column; gap: 10px; opacity: 0.9; }
+.proto-chat small { align-self: center; font: 600 12px/1 var(--ds-sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ds-text-3); margin-bottom: 4px; }
+.proto-chat p { max-width: 82%; margin: 0; padding: 12px 14px; border-radius: 16px; font: 400 15px/1.45 var(--ds-sans); }
+.proto-chat .me { align-self: flex-end; background: rgba(228, 191, 108, 0.14); color: var(--ds-text); border-bottom-right-radius: 6px; }
+.proto-chat .viju { align-self: flex-start; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ds-line-soft); color: var(--ds-text-2); border-bottom-left-radius: 6px; }
+html body .max-w-sm.mx-auto:has(> .btn-gold) { width: 100%; text-align: center; }
+html body .max-w-sm.mx-auto:has(> .btn-gold) > div:first-child { font: 400 26px/1.2 var(--ds-serif) !important; color: var(--ds-text) !important; }
+
+/* 8. «Развитие»: карточки как в «О тебе» — надпись, заголовок, описание, «Открыть» */
+html body .development-hub__diary-launcher { min-height: 168px !important; }
+html body .development-hub__launcher-title { font-size: 30px !important; }
+.proto-hub-meta { position: absolute; left: 20px; right: 45%; top: 18px; bottom: 18px; display: flex; flex-direction: column; pointer-events: none; text-align: left; }
+.proto-hub-meta i { font: 600 12px/1.3 var(--ds-sans); font-style: normal; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ds-gold); }
+.proto-hub-meta strong { margin-top: 8px; font: 400 30px/1.1 var(--ds-serif); color: var(--ds-text); }
+.proto-hub-meta span { margin-top: 8px; font: 400 13px/1.4 var(--ds-sans); color: var(--ds-text-2); }
+.proto-hub-meta b { margin-top: 10px; font: 600 13px/1 var(--ds-sans); color: var(--ds-gold); }
+html body .development-hub__diary-launcher:has(.proto-hub-meta) .development-hub__launcher-title { visibility: hidden !important; }
+html body .med-launcher__new { left: auto !important; right: 16px !important; top: 14px !important; transform: none !important; }
+
+/* 9. Квадрат: смысл цветов сохраняется (золото — сильные стороны, лунный — зоны роста),
+      но голубой #38bdf8 из чужой палитры заменён на лунный оттенок бренда; золото приглушено до фирменного */
+html body .pythagoras-insight--gold, html body .pythagoras-tone-gold { --pythagoras-tone: #e4bf6c !important; --pythagoras-tone-soft: rgba(228, 191, 108, 0.14) !important; --pythagoras-tone-border: rgba(228, 191, 108, 0.34) !important; }
+html body .pythagoras-insight--blue, html body .pythagoras-tone-blue { --pythagoras-tone: #a9b8ec !important; --pythagoras-tone-soft: rgba(169, 184, 236, 0.12) !important; --pythagoras-tone-border: rgba(169, 184, 236, 0.30) !important; }
+html body main .psychomatrix-cell .value.proto-num-blue { color: #a9b8ec !important; -webkit-text-fill-color: #a9b8ec !important; }
+.proto-legend { display: flex; gap: 16px; justify-content: center; margin: 4px 0 10px; font: 500 12px/1 var(--ds-sans); color: var(--ds-text-3); }
+.proto-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+
+/* 10. Главная: поля одной высоты, подписи на одной линии, тема — тихая кнопка */
+html body #tour-profile-form .flex.gap-3.items-end { align-items: flex-start !important; }
+html body #tour-profile-form .w-32.flex-shrink-0 > div { height: 50px; align-items: stretch; }
+html body #tour-profile-form .w-32.flex-shrink-0 > div > button { height: auto !important; }
+html body #tour-profile-form label { font-size: 12px !important; letter-spacing: 0.12em !important; font-weight: 600 !important; color: var(--ds-text-2) !important; }
+html body #tour-profile-form button.w-full.py-2 { border: 0 !important; background: transparent !important; height: 36px; color: var(--ds-text-3) !important; }
+html body #tour-profile-form button.w-full.py-2 span { font: 500 14px/1 var(--ds-sans) !important; letter-spacing: 0 !important; text-transform: none !important; }
+html body #tour-profile-form button.w-full.py-2 span::before { content: '☀︎ '; color: var(--ds-gold); }
+html body.theme-light #tour-profile-form button.w-full.py-2 span::before { content: '☾ '; }
+html body .viju-motion-setting select { appearance: none; -webkit-appearance: none; height: 40px; padding: 0 36px 0 14px; border-radius: var(--ds-r-control); border: 1px solid var(--ds-line); color: var(--ds-text);
+  background: rgba(255, 255, 255, 0.04) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23e4bf6c' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 14px center; font: 500 14px/1 var(--ds-sans); }
+
+/* 11. Астрология: тёмный текст на золоте, ошибка шрифтом сайта */
+html body [class*="border-rose-500"] { font-family: var(--ds-sans) !important; }
+html body .proto-hidden { display: none !important; }
+
+/* 12. Компьютер: разделы сверху под шапкой, а не внизу экрана */
+@media (min-width: 1024px) {
+  html body nav.app-desktop-bottom-nav { top: 76px !important; bottom: auto !important; height: 52px !important; min-height: 0 !important; padding: 0 !important; box-sizing: border-box !important; background: var(--color-header-bg, #080a21) !important; border-top: 0 !important; border-bottom: 1px solid var(--ds-line-soft) !important; box-shadow: none !important; }
+  html body nav.app-desktop-bottom-nav > div { height: 52px !important; padding: 0 !important; gap: 36px !important; }
+  html body nav.app-desktop-bottom-nav button { font: 500 15px/1 var(--ds-sans) !important; letter-spacing: 0 !important; text-transform: none !important; padding: 0 !important; height: 52px; }
+  html body nav.app-desktop-bottom-nav .med-nav-new--desktop { position: absolute !important; top: 10px !important; right: -12px !important; left: auto !important; width: 8px !important; height: 8px !important; padding: 0 !important; font-size: 0 !important; border-radius: 50% !important; background: #f1d58f !important; transform: none !important; }
+  html body .viju-reference-result-frame { margin-top: 64px !important; }
+  html body .viju-footer--with-mobile-nav { padding-bottom: 0 !important; }
+}
