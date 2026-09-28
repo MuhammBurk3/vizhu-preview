@@ -20,7 +20,7 @@
   .lead { color: var(--muted); max-width: 70ch; margin: 10px 0 0; }
   .stage { position: relative; margin-top: 20px; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: #0b1230; transition: background-color .4s ease; touch-action: pan-y; }
   .stage.day { background: #f6f1e8; }
-  .stage canvas { display: block; width: 100%; aspect-ratio: 2.2 / 1; }
+  .stage canvas { display: block; width: 100%; aspect-ratio: 2.1 / 1; }
   .stage .hint { position: absolute; left: 14px; bottom: 10px; font-size: 13px; color: rgba(185, 192, 212, 0.75); pointer-events: none; }
   .stage.day .hint { color: rgba(79, 88, 112, 0.8); }
   .fallback { padding: 40px 20px; text-align: center; color: var(--muted); }
@@ -48,7 +48,7 @@
 <div class="wrap">
   <a href="../">← Все страницы</a>
   <h1>Глаза ВИЖУ</h1>
-  <p class="lead">Глаза человекоподобного робота. В покое кожи почти нет: только веки и брови. Кожа проступает там, где эмоция собирает складки. Глаза следят за курсором, а на телефоне — за пальцем.</p>
+  <p class="lead">Глаза человекоподобного робота. Лицо проступает из темноты: сильнее всего освещено вокруг глаз, к краям уходит в фон. Складки появляются там, где их собирают мимические мышцы. Глаза следят за курсором, а на телефоне — за пальцем.</p>
 
   <div class="stage" id="stage">
     <canvas id="eyes" role="img" aria-label="Живые глаза ВИЖУ"></canvas>
@@ -65,6 +65,10 @@
       <div class="group">
         <h2>Цвет кожи</h2>
         <div class="chips" id="skins"></div>
+      </div>
+      <div class="group">
+        <h2>Кожа</h2>
+        <div class="chips"><button class="chip" type="button" id="faceFull" aria-pressed="true">Лицо из темноты</button><button class="chip" type="button" id="faceFolds" aria-pressed="false">Только складки</button></div>
       </div>
       <div class="group">
         <h2>Радужка</h2>
@@ -84,9 +88,11 @@
   <div class="about">
     <b>Что здесь нового по сравнению с сайтом</b>
     <ul>
+      <li>Человеческие пропорции: между глазами ширина глаза, брови на своей высоте, объём надбровья, век, переносицы и скул.</li>
       <li>Глаз с настоящей оптикой: роговица преломляет свет, зрачок смещается под ней при повороте взгляда, есть влажный блик и тень от века.</li>
-      <li>Брови из отдельных волосков: у головки гуще и торчат вверх, к хвосту тоньше.</li>
-      <li>Складки кожи по мимическим мышцам: «гусиные лапки» и валик под глазом при улыбке, вертикальные складки между бровей, поперечные на переносице, морщины на лбу при удивлении.</li>
+      <li>Брови из сотен отдельных волосков, растущих ёлочкой: у головки вверх, дальше вдоль брови.</li>
+      <li>Ресницы — отдельные изогнутые реснички пучками, с плотной линией у корня и тенью на веке.</li>
+      <li>Складки — мягкие ложбинки кожи по мимическим мышцам: «гусиные лапки» и валик под глазом при улыбке, складки между бровей, на переносице и на лбу.</li>
       <li>Эмоции меняются плавно: брови быстрее, складки чуть медленнее, как у живого лица.</li>
     </ul>
   </div>
@@ -97,7 +103,7 @@
 (function () {
   'use strict';
   var EMOTIONS = [
-    ['calm', 'Спокойствие', 'Мягко приоткрытые веки, кожа видна только у век.'],
+    ['calm', 'Спокойствие', 'Мягко приоткрытые веки, лицо расслаблено.'],
     ['attention', 'Внимание', 'Веки шире, брови чуть приподняты, зрачок расширяется.'],
     ['joy', 'Радость', 'Искренняя улыбка глазами: нижнее веко поднимается, в уголках собираются «гусиные лапки», под глазом валик.'],
     ['surprise', 'Удивление', 'Брови вверх, глаза широко открыты, на лбу проступают морщины.'],
@@ -119,7 +125,7 @@
     return;
   }
 
-  var state = { emotion: 'calm', skin: 'night', bg: 'night', optics: false };
+  var state = { emotion: 'calm', skin: 'night', bg: 'night', optics: false, face: 'full' };
   var emo = document.getElementById('emotions'), note = document.getElementById('emotionNote'), skins = document.getElementById('skins');
   EMOTIONS.forEach(function (e) {
     var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = e[1]; b.dataset.id = e[0];
@@ -133,7 +139,7 @@
     skins.appendChild(b);
   });
   function press(container, id) { [].forEach.call(container.children, function (c) { c.setAttribute('aria-pressed', String(c.dataset.id === id)); }); }
-  function saveHash() { try { history.replaceState(null, '', '#' + [state.emotion, state.skin, state.bg, state.optics ? 'optics' : 'live'].join('_')); } catch (e) {} }
+  function saveHash() { try { history.replaceState(null, '', '#' + [state.emotion, state.skin, state.bg, state.optics ? 'optics' : 'live', state.face].join('_')); } catch (e) {} }
   function setEmotion(id) {
     var e = EMOTIONS.filter(function (x) { return x[0] === id; })[0]; if (!e) return;
     state.emotion = id; lab.setEmotion(id); press(emo, id); note.textContent = e[2]; saveHash();
@@ -143,12 +149,18 @@
     state.bg = day ? 'day' : 'night'; lab.setDay(day); stage.classList.toggle('day', day);
     document.getElementById('bgDay').setAttribute('aria-pressed', String(day)); document.getElementById('bgNight').setAttribute('aria-pressed', String(!day)); saveHash();
   }
+  function setFace(full) {
+    state.face = full ? 'full' : 'folds'; lab.setPresence(full ? 1 : 0.18);
+    document.getElementById('faceFull').setAttribute('aria-pressed', String(full)); document.getElementById('faceFolds').setAttribute('aria-pressed', String(!full)); saveHash();
+  }
   function setOptics(on) {
     state.optics = on; lab.setOptics(on);
     document.getElementById('irisOptics').setAttribute('aria-pressed', String(on)); document.getElementById('irisLive').setAttribute('aria-pressed', String(!on)); saveHash();
   }
   document.getElementById('bgNight').addEventListener('click', function () { setBg(false); });
   document.getElementById('bgDay').addEventListener('click', function () { setBg(true); });
+  document.getElementById('faceFull').addEventListener('click', function () { setFace(true); });
+  document.getElementById('faceFolds').addEventListener('click', function () { setFace(false); });
   document.getElementById('irisLive').addEventListener('click', function () { setOptics(false); });
   document.getElementById('irisOptics').addEventListener('click', function () { setOptics(true); });
   document.getElementById('blink').addEventListener('click', function () { lab.blink(); });
@@ -170,6 +182,7 @@
   setSkin(SKINS.some(function (s) { return s[0] === parts[1]; }) ? parts[1] : 'night');
   setBg(parts[2] === 'day');
   setOptics(parts[3] === 'optics');
+  setFace(parts[4] !== 'folds');
 })();
 </script>
 </body>
