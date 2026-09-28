@@ -40,6 +40,8 @@
   .about ul { margin: 8px 0 0; padding-left: 20px; }
   .about li + li { margin-top: 4px; }
   @media (max-width: 600px) { .stage canvas { aspect-ratio: 1.7 / 1; } .chip { padding: 9px 12px; font-size: 14px; } }
+  /* On phones and tablets the eyes stay pinned while the controls scroll under them. */
+  @media (max-width: 900px) { .stage { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; box-shadow: 0 10px 24px rgba(2, 5, 18, 0.55); } }
 </style>
 </head>
 <body>
