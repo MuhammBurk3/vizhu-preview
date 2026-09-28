@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="Вижу: было и стало">
+<meta property="og:description" content="Экраны сайта до и после нового визуального слоя.">
+<meta property="og:type" content="website">
+<title>Вижу: было и стало</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Display:wght@300..500&family=Onest:wght@400..600&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0b1230;
+  --surface: #111936;
+  --line: #28325a;
+  --text: #f2eee6;
+  --muted: #b9c0d4;
+  --subtle: #8c96b0;
+  --gold: #e4bf6c;
+  --before: #9aa3bd;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.55 'Onest', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; }
+h1 { font: 400 clamp(30px, 5vw, 44px)/1.1 'Noto Serif Display', Georgia, serif; margin: 0; }
+h2 { font: 400 26px/1.2 'Noto Serif Display', Georgia, serif; margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); max-width: 70ch; margin: 12px 0 0; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 20px; }
+nav.toc a { color: var(--muted); text-decoration: none; font-size: 14px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 10px; }
+nav.toc a:hover { color: var(--text); border-color: var(--gold); }
+section.pair { padding-block: 36px; border-top: 1px solid var(--line); scroll-margin-top: 12px; }
+section.pair:first-of-type { margin-top: 28px; }
+.changes { margin: 10px 0 18px; padding-left: 20px; color: var(--muted); max-width: 80ch; }
+.changes li + li { margin-top: 4px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.grid.phone { grid-template-columns: repeat(2, minmax(0, 390px)); justify-content: start; }
+figure { margin: 0; min-width: 0; }
+figure img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); }
+figcaption { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font: 600 12px/1 'Onest', sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+figcaption.before { color: var(--before); }
+figcaption.after { color: var(--gold); }
+figcaption i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.note { margin-top: 36px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.note ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); }
+.note li + li { margin-top: 4px; }
+@media (max-width: 640px) {
+  .grid, .grid.phone { grid-template-columns: 1fr; }
+}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <p style="margin:0 0 12px"><a href="../" style="color:#e4bf6c">← Все страницы</a></p>
+  <h1>Вижу: было и стало</h1>
+  <p class="lead">Слева экраны сайта сейчас, справа те же экраны с новым визуальным слоем. Снято на живом vijuai.ru в одинаковых условиях. На сайт пока ничего не выложено.</p>
+  <nav class="toc" aria-label="Экраны">
+    <a href="#home">Главная</a><a href="#home-light">Главная, светлая</a><a href="#home-desk">Главная, компьютер</a>
+    <a href="#eyes">Глаза</a><a href="#gaze">Взгляд за полем</a><a href="#today">Сегодня</a><a href="#about">О тебе</a>
+    <a href="#growth">Развитие</a><a href="#tariffs">Тарифы</a><a href="#light-fixes">Светлая тема</a><a href="#footer">Подвал</a>
+  </nav>
+
+  <section class="pair" id="home">
+    <h2>Главная, телефон</h2>
+    <ul class="changes">
+      <li>Шрифты Noto Serif Display и Onest.</li>
+      <li>«ВИЖУ» тонкой антиквой, без свечения.</li>
+      <li>Заголовок «Собрать профиль» над формой убран. Кнопка набрана обычным регистром.</li>
+      <li>Выбор темы остался на первом экране.</li>
+      <li>Глаза нарисованы заново: тёплый белок, глубина под роговицей, тень века.</li>
+    </ul>
+    <div class="grid phone">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img src="img/home-m-before.jpg" alt="Главная на телефоне сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img src="img/home-m-after.jpg" alt="Главная на телефоне с новым слоем"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="home-light">
+    <h2>Главная, светлая тема</h2>
+    <ul class="changes">
+      <li>Веки тёплые, без лиловых теней и серых ореолов.</li>
+      <li>Золото темнее и контрастнее на кремовом фоне.</li>
+    </ul>
+    <div class="grid phone">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/home-m-light-before.jpg" alt="Светлая главная сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/home-m-light-after.jpg" alt="Светлая главная с новым слоем"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="home-desk">
+    <h2>Главная, компьютер</h2>
+    <ul class="changes">
+      <li>Одно золото вместо лимонного, оранжевого и медового: кнопка «Тарифы», пол, главная кнопка.</li>
+    </ul>
+    <div class="grid">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/home-d-before.jpg" alt="Главная на компьютере сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/home-d-after.jpg" alt="Главная на компьютере с новым слоем"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="eyes">
+    <h2>Глаза крупно</h2>
+    <ul class="changes">
+      <li>Радужка та же, но лежит под роговицей: при повороте взгляда зрачок смещается, как у настоящего глаза.</li>
+      <li>Верхнее веко отбрасывает тень, есть влажный блик и ресницы.</li>
+      <li>Брови и вся мимика остались от прежнего движка.</li>
+    </ul>
+    <div class="grid">
+      <figure><figcaption class="before"><i></i>Было, тёмная</figcaption><img loading="lazy" decoding="async" src="img/eyes-dark-before.jpg" alt="Глаза крупно сейчас, тёмная тема"></figure>
+      <figure><figcaption class="after"><i></i>Стало, тёмная</figcaption><img loading="lazy" decoding="async" src="img/eyes-dark-after.jpg" alt="Новые глаза, тёмная тема"></figure>
+      <figure><figcaption class="before"><i></i>Было, светлая</figcaption><img loading="lazy" decoding="async" src="img/eyes-light-before.jpg" alt="Глаза крупно сейчас, светлая тема"></figure>
+      <figure><figcaption class="after"><i></i>Стало, светлая</figcaption><img loading="lazy" decoding="async" src="img/eyes-light-after.jpg" alt="Новые глаза, светлая тема"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="gaze">
+    <h2>Взгляд за полем</h2>
+    <ul class="changes">
+      <li>Пока человек вводит имя, глаза смотрят на поле. Раньше они на ввод не реагировали.</li>
+    </ul>
+    <div class="grid phone">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/gaze-before.jpg" alt="Ввод имени сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/gaze-after.jpg" alt="Ввод имени: глаза смотрят на поле"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="today">
+    <h2>Сегодня</h2>
+    <ul class="changes">
+      <li>«Войти для расшифровки» набрано той же антиквой, что «Оракул ВИЖУ».</li>
+      <li>«Пригласи друга в ВИЖУ» — читаемым шрифтом вместо мелкой антиквы 13 px.</li>
+      <li>Подписи нижнего меню — 12 px.</li>
+    </ul>
+    <div class="grid phone">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/today-before.jpg" alt="Экран Сегодня сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/today-after.jpg" alt="Экран Сегодня с новым слоем"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="about">
+    <h2>О тебе</h2>
+    <ul class="changes">
+      <li>Заголовки карточек — новая антиква той же ширины, строчные буквы крупнее.</li>
+    </ul>
+    <div class="grid phone">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/about-before.jpg" alt="Раздел О тебе сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/about-after.jpg" alt="Раздел О тебе с новым слоем"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="growth">
+    <h2>Развитие</h2>
+    <ul class="changes">
+      <li>«Дневник», «Таро», «Медитации» обычным регистром, как карточки в «О тебе».</li>
+      <li>Бейдж «Новинка» больше не мигает.</li>
+    </ul>
+    <div class="grid phone">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/growth-before.jpg" alt="Раздел Развитие сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/growth-after.jpg" alt="Раздел Развитие с новым слоем"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="tariffs">
+    <h2>Тарифы</h2>
+    <ul class="changes">
+      <li>Подписи «сообщений ВИЖУ в неделю» — 12 px вместо 10.</li>
+      <li>Переключатель «Месяц / Год» золотой вместо фиолетового.</li>
+    </ul>
+    <div class="grid phone">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/tariffs-before.jpg" alt="Тарифы сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/tariffs-after.jpg" alt="Тарифы с новым слоем"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="light-fixes">
+    <h2>Светлая тема: исправленные кнопки</h2>
+    <ul class="changes">
+      <li>Кнопка «назад» в «Квадрате Пифагора» больше не тёмное пятно.</li>
+      <li>Кнопку «Войти» в плашке приглашения теперь видно.</li>
+    </ul>
+    <div class="grid">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/back-light-before.jpg" alt="Кнопка назад в светлой теме сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/back-light-after.jpg" alt="Кнопка назад в светлой теме исправлена"></figure>
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/invite-light-before.jpg" alt="Плашка приглашения в светлой теме сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/invite-light-after.jpg" alt="Плашка приглашения в светлой теме исправлена"></figure>
+    </div>
+  </section>
+
+  <section class="pair" id="footer">
+    <h2>Подвал</h2>
+    <ul class="changes">
+      <li>«Вижу» в кавычках-ёлочках.</li>
+      <li>Выбор «Движение» оформлен как часть подвала.</li>
+    </ul>
+    <div class="grid">
+      <figure><figcaption class="before"><i></i>Было</figcaption><img loading="lazy" decoding="async" src="img/footer-before.jpg" alt="Подвал сейчас"></figure>
+      <figure><figcaption class="after"><i></i>Стало</figcaption><img loading="lazy" decoding="async" src="img/footer-after.jpg" alt="Подвал с новым слоем"></figure>
+    </div>
+  </section>
+
+  <div class="note">
+    <h2>Что видно только в движении</h2>
+    <ul>
+      <li>При нажатии «Собрать профиль» глаза улыбаются.</li>
+      <li>При первом открытии главной по «ВИЖУ» один раз проходит золотой свет.</li>
+      <li>Разделы нижнего меню сменяются мягким переходом.</li>
+      <li>Карточки хабов поднимаются при прокрутке. При наведении по рамке проходит свет.</li>
+      <li>Прыжки, расходящиеся круги и мигание бейджей убраны. Числа появляются сразу, без досчёта.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>
