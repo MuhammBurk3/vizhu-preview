@@ -218,12 +218,12 @@
   <div class="row-end"><button class="act" type="button" id="manualClose">Закрыть</button></div>
 </dialog>
 
-<script src="eyes-lab.js?v=4.2"></script>
+<script src="eyes-lab.js?v=4.3"></script>
 <script>
 // A browser may still hold the previous engine in its cache: then load a fresh copy before starting.
 (function (start) {
   var L = window.VijuEyeLab;
-  if (L && L.VERSION >= 4) return start();
+  if (L && L.VERSION >= 4.3) return start();
   var s = document.createElement('script');
   s.src = 'eyes-lab.js?fresh=' + Date.now();
   s.onload = s.onerror = start;
@@ -232,7 +232,7 @@
   'use strict';
   var LAB = window.VijuEyeLab;
   var stageEl = document.getElementById('stage');
-  if (!LAB || !(LAB.VERSION >= 4)) {
+  if (!LAB || !(LAB.VERSION >= 4.3)) {
     var msg = document.createElement('div'); msg.className = 'fallback';
     msg.textContent = 'Не удалось загрузить движок глаз. Обновите страницу с очисткой кэша: в Safari ⌥⌘R, в Chrome ⇧⌘R (на Windows Ctrl+F5).';
     stageEl.appendChild(msg);
@@ -255,6 +255,7 @@
   ];
   var SKINS = [['night', 'Ночной синий'], ['violet', 'Фиолетовый'], ['indigo', 'Индиго'], ['cobalt', 'Кобальт'], ['moon', 'Лунный']];
   var IRIS = [['#d99a2b', 'Янтарь'], ['#e4bf6c', 'Золото'], ['#5f9152', 'Зелёная'], ['#4d82c9', 'Голубая'], ['#8b67d6', 'Фиолетовая'], ['#8d97ab', 'Серая']];
+  var LIDS = [['#4c2f9e', 'Фиолетовый ВИЖУ'], ['#8b5cf6', 'Яркий фиолетовый'], ['#9d7fd0', 'Сиреневый'], ['#34448e', 'Синий'], ['#b8913f', 'Золото']];
   var BROWS = [['#0b0d20', 'Графит'], ['#18214a', 'Тёмно-синий'], ['#3b2b22', 'Каштан'], ['#9ba3ba', 'Серебро'], ['#b8913f', 'Золото']];
 
   function S(key, label, min, max, step, fmt) { return { type: 'slider', key: key, label: label, min: min, max: max, step: step, fmt: fmt }; }
@@ -296,10 +297,12 @@
       { type: 'switches', items: [['optics', 'Оптика в радужке']] },
       S('glow', 'Свечение оптики', 0, 1, 0.01, 'pct')
     ] },
-    { id: 'lashes', title: 'Ресницы', open: false, items: [
-      S('lashLen', 'Длина', 0.5, 1.6, 0.01, 'num'),
-      S('lashDensity', 'Густота', 0.5, 1.5, 0.01, 'num'),
-      S('lashCurl', 'Изгиб', 0, 2, 0.01, 'num')
+    { id: 'lashes', title: 'Веки и ресницы', open: false, items: [
+      { type: 'color', key: 'lidColor', label: 'Цвет век', presets: LIDS },
+      S('lidAmount', 'Сила цвета век', 0, 1, 0.01, 'pct'),
+      S('lashLen', 'Длина ресниц', 0.5, 1.6, 0.01, 'num'),
+      S('lashDensity', 'Густота ресниц', 0.5, 1.5, 0.01, 'num'),
+      S('lashCurl', 'Изгиб ресниц', 0, 2, 0.01, 'num')
     ] },
     { id: 'folds', title: 'Складки кожи', open: false, items: [
       S('wrinkles', 'Глубина складок', 0, 2, 0.01, 'num'),
@@ -622,7 +625,7 @@
   if (readHash()) persist();
   // The controls are on screen first; the eyes start on the next frame so a slow shader compile never hides them.
   setTimeout(function () {
-    try { lab = LAB.create(canvas, { iris: 'iris.jpg?v=4.2' }); } catch (e) { console.error(e); }
+    try { lab = LAB.create(canvas, { iris: 'iris.jpg?v=4.3' }); } catch (e) { console.error(e); }
     if (!lab) { stage.appendChild(h('div', { class: 'fallback', text: 'Этому браузеру не хватает WebGL 2, поэтому глаза не показываются. Откройте страницу в свежем Chrome, Safari, Firefox или Edge.' })); return; }
     lab.setConfig(cfg);
   }, 30);
