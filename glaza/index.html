@@ -2,187 +2,611 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta property="og:title" content="Глаза ВИЖУ">
-<meta property="og:description" content="Живые глаза человекоподобного робота: эмоции, складки кожи, цвета кожи на выбор.">
-<title>Глаза ВИЖУ</title>
+<meta property="og:title" content="Редактор глаз ВИЖУ">
+<meta property="og:description" content="Живые глаза человекоподобного робота: эмоции, складки кожи, брови, радужка, свет. Все настройки вручную.">
+<title>Редактор глаз ВИЖУ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Display:wght@300;400&family=Onest:wght@400;500;600&display=swap">
 <style>
-  :root { color-scheme: dark; --bg: #0b1230; --panel: #111936; --line: #28325a; --text: #f2eee6; --muted: #b9c0d4; --gold: #e4bf6c; }
+  :root {
+    color-scheme: dark;
+    --bg: #0b1230; --panel: #0f1735; --panel-2: #141d40; --line: #25305a; --line-2: #34406e;
+    --text: #f2eee6; --muted: #aab3cb; --faint: #7f89a6; --gold: #e4bf6c; --gold-soft: rgba(228, 191, 108, 0.14);
+    --day: #f6f1e8;
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 'Onest', system-ui, sans-serif; }
-  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 56px; }
-  a { color: var(--gold); }
-  h1 { font: 300 clamp(30px, 5vw, 44px)/1.1 'Noto Serif Display', Georgia, serif; margin: 10px 0 0; letter-spacing: 0.02em; }
-  .lead { color: var(--muted); max-width: 70ch; margin: 10px 0 0; }
-  .stage { position: relative; margin-top: 20px; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: #0b1230; transition: background-color .4s ease; touch-action: pan-y; }
-  .stage.day { background: #f6f1e8; }
-  .stage canvas { display: block; width: 100%; aspect-ratio: 2.1 / 1; }
-  .stage .hint { position: absolute; left: 14px; bottom: 10px; font-size: 13px; color: rgba(185, 192, 212, 0.75); pointer-events: none; }
-  .stage.day .hint { color: rgba(79, 88, 112, 0.8); }
-  .fallback { padding: 40px 20px; text-align: center; color: var(--muted); }
-  .controls { display: grid; gap: 18px; margin-top: 18px; }
-  .group h2 { font: 600 12px/1.3 'Onest', sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin: 0 0 8px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip { min-height: 42px; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font: 500 15px/1 'Onest', sans-serif; cursor: pointer; }
-  .chip:hover { color: var(--text); border-color: rgba(228, 191, 108, 0.5); }
-  .chip[aria-pressed="true"] { color: var(--text); border-color: var(--gold); background: rgba(228, 191, 108, 0.12); }
-  .chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-  .swatch { display: inline-flex; align-items: center; gap: 8px; }
-  .swatch i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); }
-  .note { color: var(--muted); font-size: 15px; min-height: 3em; margin: 4px 0 0; }
-  .row { display: flex; flex-wrap: wrap; gap: 18px 28px; }
-  .about { margin-top: 30px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--muted); font-size: 15px; }
-  .about b { color: var(--text); font-weight: 600; }
-  .about ul { margin: 8px 0 0; padding-left: 20px; }
-  .about li + li { margin-top: 4px; }
-  @media (max-width: 600px) { .stage canvas { aspect-ratio: 1.7 / 1; } .chip { padding: 9px 12px; font-size: 14px; } }
-  /* On phones and tablets the eyes stay pinned while the controls scroll under them. */
-  @media (max-width: 900px) { .stage { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; box-shadow: 0 10px 24px rgba(2, 5, 18, 0.55); } }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 400 14px/1.45 'Onest', system-ui, sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  a { color: var(--gold); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* ---------- layout: eyes on the left, controls on the right, all within one screen ---------- */
+  .app { display: grid; grid-template-columns: minmax(0, 1fr) 392px; grid-template-rows: auto minmax(0, 1fr); height: 100vh; height: 100dvh; }
+  .top { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 10px 18px; border-bottom: 1px solid var(--line); min-height: 52px; }
+  .top h1 { margin: 0; font: 300 22px/1.1 'Noto Serif Display', Georgia, serif; letter-spacing: 0.02em; }
+  .top h1 span { color: var(--gold); letter-spacing: 0.18em; margin-left: 4px; }
+  .top .back { font-size: 13px; white-space: nowrap; }
+  .top .saved { margin-left: auto; font-size: 12px; color: var(--faint); white-space: nowrap; }
+
+  .stage { position: relative; min-height: 0; background: var(--bg); transition: background-color .4s ease; overflow: hidden; touch-action: pan-y; }
+  .stage.day { background: var(--day); }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .caption { position: absolute; left: 18px; bottom: 16px; right: 18px; pointer-events: none; max-width: 560px; }
+  .caption b { display: block; font: 300 26px/1.1 'Noto Serif Display', Georgia, serif; color: var(--text); }
+  .caption span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+  .stage.day .caption b { color: #1c2240; }
+  .stage.day .caption span { color: #4f5870; }
+  .hint { position: absolute; right: 16px; top: 14px; font-size: 12px; color: rgba(170, 179, 203, 0.8); pointer-events: none; }
+  .stage.day .hint { color: rgba(79, 88, 112, 0.85); }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+  .panel { min-height: 0; overflow-y: auto; border-left: 1px solid var(--line); background: var(--panel); overscroll-behavior: contain; }
+  .actions { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: 1.35fr 1fr 0.62fr 0.8fr; gap: 6px; padding: 10px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .act { min-height: 34px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); font-size: 12.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .act:hover { border-color: var(--gold); }
+  .act.primary { background: var(--gold); border-color: var(--gold); color: #1a1406; }
+  .act.primary:hover { filter: brightness(1.06); }
+  .act .short { display: none; }
+
+  /* ---------- sections ---------- */
+  details.sec { position: relative; border-bottom: 1px solid var(--line); break-inside: avoid; }
+  .sec-reset { position: absolute; top: 7px; right: 34px; border: 0; background: none; padding: 3px 4px; color: var(--faint); font-size: 11.5px; cursor: pointer; }
+  .sec-reset:hover { color: var(--gold); }
+  details.sec > summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 11px 14px; cursor: pointer; user-select: none; font: 600 11px/1.2 'Onest', sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); }
+  details.sec > summary::-webkit-details-marker { display: none; }
+  details.sec > summary::after { content: ''; margin-left: auto; width: 7px; height: 7px; border-right: 1.5px solid var(--faint); border-bottom: 1.5px solid var(--faint); transform: rotate(-45deg); transition: transform .2s ease; }
+  details.sec[open] > summary::after { transform: rotate(45deg); }
+  .sec-body { padding: 0 14px 12px; display: grid; gap: 2px; }
+
+  .row { display: grid; grid-template-columns: 128px minmax(0, 1fr) 46px; align-items: center; gap: 8px; min-height: 28px; }
+  .row label { font-size: 13px; color: var(--muted); cursor: default; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row output { font-size: 12px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+  .row.changed label { color: var(--text); }
+  .row.changed label::after { content: ' •'; color: var(--gold); }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; margin: 0; cursor: pointer; accent-color: var(--gold); }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--gold) 0 var(--p, 50%), var(--line-2) var(--p, 50%) 100%); }
+  input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: var(--line-2); }
+  input[type=range]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--gold); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #f7e7bf; border: 2px solid var(--gold); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #f7e7bf; border: 2px solid var(--gold); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--muted); font-size: 12.5px; font-weight: 500; line-height: 1.2; white-space: nowrap; cursor: pointer; }
+  .chip:hover { color: var(--text); border-color: rgba(228, 191, 108, 0.55); }
+  .chip[aria-pressed="true"] { color: var(--text); border-color: var(--gold); background: var(--gold-soft); }
+
+  .switches { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-top: 4px; }
+  .switch { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 13px; cursor: pointer; text-align: left; }
+  .switch i { flex: none; position: relative; width: 30px; height: 18px; border-radius: 9px; background: var(--line-2); transition: background-color .2s ease; }
+  .switch i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #cfd5e6; transition: transform .2s ease; }
+  .switch[aria-checked="true"] { color: var(--text); }
+  .switch[aria-checked="true"] i { background: var(--gold); }
+  .switch[aria-checked="true"] i::after { transform: translateX(12px); background: #fff8e6; }
+  .switch.plain { justify-content: center; border: 1px solid var(--line-2); border-radius: 10px; background: var(--panel-2); color: var(--text); }
+  .switch.plain:hover { border-color: var(--gold); }
+
+  .colors { display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 34px; }
+  .colors > span { font-size: 13px; color: var(--muted); }
+  .sw-list { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .sw { position: relative; width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.22); cursor: pointer; padding: 0; }
+  .sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--gold); }
+  .sw.natural { background: conic-gradient(#8a5a1c, #e0a64a, #6e4410, #c98a2e, #8a5a1c); }
+  .picker { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 3px; border-radius: 999px; border: 1px dashed var(--line-2); color: var(--muted); font-size: 12px; cursor: pointer; }
+  .picker:hover { border-color: var(--gold); color: var(--text); }
+  .picker input { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+  .picker input::-webkit-color-swatch-wrapper { padding: 0; }
+  .picker input::-webkit-color-swatch { border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 50%; }
+  .picker input::-moz-color-swatch { border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 50%; }
+
+  .seg { display: inline-grid; grid-auto-flow: column; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
+  .seg button { padding: 5px 12px; border: 0; background: var(--panel-2); color: var(--muted); font-size: 12.5px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--gold-soft); color: var(--text); box-shadow: inset 0 -2px 0 var(--gold); }
+
+  .variants { display: grid; gap: 6px; }
+  .variant { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; border: 1px solid var(--line-2); border-radius: 10px; background: var(--panel-2); }
+  .variant button { border: 0; background: none; cursor: pointer; }
+  .variant .apply { padding: 7px 10px; text-align: left; min-width: 0; }
+  .variant .apply b { display: block; font-size: 13px; font-weight: 600; }
+  .variant .apply small { display: block; color: var(--faint); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .variant .del { width: 34px; height: 34px; color: var(--faint); font-size: 18px; }
+  .variant .del:hover { color: var(--gold); }
+  .empty { color: var(--faint); font-size: 12.5px; margin: 2px 0 4px; }
+  .note { color: var(--faint); font-size: 12px; margin: 10px 14px 16px; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; z-index: 20; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: #1b2550; border: 1px solid var(--line-2); color: var(--text); font-size: 13px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); transition: opacity .2s ease, transform .2s ease; max-width: calc(100vw - 32px); }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .toast button { border: 0; background: none; color: var(--gold); font-weight: 600; cursor: pointer; padding: 0; }
+
+  dialog { width: min(640px, calc(100vw - 32px)); border: 1px solid var(--line-2); border-radius: 16px; background: var(--panel); color: var(--text); padding: 16px; }
+  dialog::backdrop { background: rgba(3, 6, 20, 0.6); }
+  dialog textarea { width: 100%; height: 260px; margin-top: 8px; border-radius: 10px; border: 1px solid var(--line-2); background: #0a1028; color: var(--text); font: 12px/1.45 ui-monospace, Menlo, monospace; padding: 10px; }
+  dialog .row-end { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+  @media (min-width: 1280px) and (min-height: 640px) {
+    .app { grid-template-columns: minmax(0, 1fr) 700px; }
+    #sections { columns: 2; column-gap: 0; column-rule: 1px solid var(--line); }
+    .actions { grid-template-columns: 1.6fr 1fr 0.7fr 0.9fr; padding: 8px 12px; }
+    .note { display: none; }
+    details.sec > summary { padding: 9px 14px; }
+    .sec-reset { top: 5px; }
+    .sec-body { padding: 0 14px 9px; gap: 0; }
+    .row { grid-template-columns: 112px minmax(0, 1fr) 42px; min-height: 26px; }
+    .colors { grid-template-columns: 112px minmax(0, 1fr); min-height: 30px; }
+    .chip { padding: 4px 8px; font-size: 12px; }
+    .chips { gap: 4px; margin-bottom: 2px; }
+    .switches { grid-template-columns: 1.2fr 1fr; gap: 0 8px; margin-top: 2px; }
+    .switch { min-height: 28px; font-size: 12.5px; white-space: nowrap; }
+    .switch.plain { min-height: 26px; }
+    .sw { width: 19px; height: 19px; }
+    .sw-list { gap: 4px; }
+    .picker { height: 22px; font-size: 11.5px; padding: 0 7px 0 2px; }
+    .picker input { width: 17px; height: 17px; }
+  }
+  @media (max-width: 1100px) { .app { grid-template-columns: minmax(0, 1fr) 360px; } .row { grid-template-columns: 116px minmax(0, 1fr) 44px; } .colors { grid-template-columns: 116px minmax(0, 1fr); } }
+
+  /* ---------- phones and tablets: eyes pinned on top, controls scroll under them ---------- */
+  @media (max-width: 900px) {
+    .app { display: block; height: auto; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+    .top { padding: 8px 16px; min-height: 44px; gap: 12px; }
+    .top h1 { font-size: 19px; }
+    .top .saved { display: none; }
+    .stage { position: sticky; top: 0; z-index: 5; height: min(44svh, 72vw); min-height: 220px; box-shadow: 0 10px 24px rgba(2, 5, 18, 0.55); }
+    .caption { left: 14px; bottom: 10px; }
+    .caption b { font-size: 20px; }
+    .caption span { display: none; }
+    .hint { right: 12px; top: 10px; }
+    .panel { border-left: 0; overflow: visible; }
+    .actions { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 10; grid-template-columns: repeat(4, 1fr); padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); border-bottom: 0; }
+    .act { min-height: 42px; font-size: 13px; }
+    .act .long { display: none; }
+    .act .short { display: inline; }
+    .actions { grid-template-columns: 1.3fr 1fr 0.8fr 0.9fr; }
+    .switches { grid-template-columns: 1.25fr 1fr; }
+    details.sec > summary { padding: 13px 16px; }
+    .sec-body { padding: 0 16px 14px; }
+    .row { grid-template-columns: 118px minmax(0, 1fr) 42px; min-height: 40px; }
+    .colors { grid-template-columns: 118px minmax(0, 1fr); min-height: 40px; }
+    input[type=range] { height: 32px; }
+    input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9px; }
+    .chip { padding: 7px 11px; font-size: 13px; }
+    .switch { min-height: 38px; }
+    .sw { width: 30px; height: 30px; }
+    .toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+    .note { margin: 12px 16px 20px; }
+  }
+  @media (max-width: 380px) { .row { grid-template-columns: 104px minmax(0, 1fr) 40px; } .colors { grid-template-columns: 104px minmax(0, 1fr); } .act { font-size: 12px; padding: 6px 4px; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <a href="../">← Все страницы</a>
-  <h1>Глаза ВИЖУ</h1>
-  <p class="lead">Глаза человекоподобного робота. Лицо проступает из темноты: сильнее всего освещено вокруг глаз, к краям уходит в фон. Складки появляются там, где их собирают мимические мышцы. Глаза следят за курсором, а на телефоне — за пальцем.</p>
+<div class="app">
+  <header class="top">
+    <a class="back" href="../">← Все страницы</a>
+    <h1>Редактор глаз <span>ВИЖУ</span></h1>
+    <div class="saved" id="saved">Настройки сохраняются в этом браузере</div>
+  </header>
 
-  <div class="stage" id="stage">
+  <section class="stage" id="stage" aria-label="Глаза">
     <canvas id="eyes" role="img" aria-label="Живые глаза ВИЖУ"></canvas>
-    <div class="hint" id="hint">Проведите курсором или пальцем по экрану</div>
-  </div>
+    <div class="caption" aria-live="polite"><b id="capTitle"></b><span id="capText"></span></div>
+    <div class="hint" id="hint"></div>
+  </section>
 
-  <div class="controls">
-    <div class="group">
-      <h2>Эмоция</h2>
-      <div class="chips" id="emotions"></div>
-      <p class="note" id="emotionNote" aria-live="polite"></p>
+  <aside class="panel" id="panel" aria-label="Настройки">
+    <div class="actions">
+      <button class="act primary" type="button" id="copyCfg"><span class="long">Скопировать настройки</span><span class="short">Копировать</span></button>
+      <button class="act" type="button" id="copyLink">Ссылка</button>
+      <button class="act" type="button" id="savePng">PNG</button>
+      <button class="act" type="button" id="resetAll"><span class="long">Сбросить</span><span class="short">Сброс</span></button>
     </div>
-    <div class="row">
-      <div class="group">
-        <h2>Цвет кожи</h2>
-        <div class="chips" id="skins"></div>
-      </div>
-      <div class="group">
-        <h2>Кожа</h2>
-        <div class="chips"><button class="chip" type="button" id="faceFull" aria-pressed="true">Лицо из темноты</button><button class="chip" type="button" id="faceFolds" aria-pressed="false">Только складки</button></div>
-      </div>
-      <div class="group">
-        <h2>Радужка</h2>
-        <div class="chips"><button class="chip" type="button" id="irisLive" aria-pressed="true">Живая</button><button class="chip" type="button" id="irisOptics" aria-pressed="false">С оптикой</button></div>
-      </div>
-      <div class="group">
-        <h2>Фон сайта</h2>
-        <div class="chips"><button class="chip" type="button" id="bgNight" aria-pressed="true">Ночь</button><button class="chip" type="button" id="bgDay" aria-pressed="false">День</button></div>
-      </div>
-      <div class="group">
-        <h2>Ещё</h2>
-        <div class="chips"><button class="chip" type="button" id="auto" aria-pressed="false">Эмоции по кругу</button><button class="chip" type="button" id="blink">Моргнуть</button></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="about">
-    <b>Что здесь нового по сравнению с сайтом</b>
-    <ul>
-      <li>Человеческие пропорции: между глазами ширина глаза, брови на своей высоте, объём надбровья, век, переносицы и скул.</li>
-      <li>Глаз с настоящей оптикой: роговица преломляет свет, зрачок смещается под ней при повороте взгляда, есть влажный блик и тень от века.</li>
-      <li>Брови из сотен отдельных волосков, растущих ёлочкой: у головки вверх, дальше вдоль брови.</li>
-      <li>Ресницы — отдельные изогнутые реснички пучками, с плотной линией у корня и тенью на веке.</li>
-      <li>Складки — мягкие ложбинки кожи по мимическим мышцам: «гусиные лапки» и валик под глазом при улыбке, складки между бровей, на переносице и на лбу.</li>
-      <li>Эмоции меняются плавно: брови быстрее, складки чуть медленнее, как у живого лица.</li>
-    </ul>
-  </div>
+    <div id="sections"></div>
+    <p class="note">Изменённые параметры отмечены точкой. Двойное нажатие на название ползунка возвращает его значение. «Копировать» кладёт в буфер все значения и ссылку: их можно сразу переслать.</p>
+  </aside>
 </div>
+
+<div class="toast" id="toast" role="status"><span id="toastText"></span><button type="button" id="toastAction" hidden></button></div>
+
+<dialog id="manual">
+  <b>Скопируйте текст вручную</b>
+  <textarea id="manualText" readonly></textarea>
+  <div class="row-end"><button class="act" type="button" id="manualClose">Закрыть</button></div>
+</dialog>
 
 <script src="eyes-lab.js"></script>
 <script>
 (function () {
   'use strict';
+  var LAB = window.VijuEyeLab;
+  var D = LAB.DEFAULTS;
+  var STORE = 'viju-eye-editor-v1', VARIANTS = 'viju-eye-variants-v1';
+
   var EMOTIONS = [
     ['calm', 'Спокойствие', 'Мягко приоткрытые веки, лицо расслаблено.'],
     ['attention', 'Внимание', 'Веки шире, брови чуть приподняты, зрачок расширяется.'],
-    ['joy', 'Радость', 'Искренняя улыбка глазами: нижнее веко поднимается, в уголках собираются «гусиные лапки», под глазом валик.'],
+    ['joy', 'Радость', 'Улыбка глазами: нижнее веко поднимается, в уголках собираются «гусиные лапки».'],
     ['surprise', 'Удивление', 'Брови вверх, глаза широко открыты, на лбу проступают морщины.'],
     ['empathy', 'Сочувствие', 'Внутренние концы бровей поднимаются домиком, между бровей лёгкая складка.'],
-    ['thinking', 'Задумчивость', 'Брови сведены, между ними вертикальные складки, взгляд уходит вверх и в сторону.'],
-    ['strict', 'Строгость', 'Брови опущены и сведены, глубокие складки между бровей и на переносице, напряжённые нижние веки.'],
+    ['thinking', 'Задумчивость', 'Брови сведены, между ними складки, взгляд уходит вверх и в сторону.'],
+    ['strict', 'Строгость', 'Брови опущены и сведены, складки между бровей и на переносице.'],
     ['doubt', 'Сомнение', 'Одна бровь приподнята, второй глаз прищурен.'],
     ['tenderness', 'Нежность', 'Мягкая улыбка глазами, широкий зрачок.'],
     ['sleepy', 'Сонливость', 'Тяжёлые веки и медленные моргания.']
   ];
-  var SKINS = [['night', 'Ночной синий', '#2c3a78'], ['violet', 'Фиолетовый', '#4b3a86'], ['indigo', 'Индиго', '#35306e'], ['cobalt', 'Кобальт', '#1f4a8c'], ['moon', 'Лунный', '#7481a8']];
+  var SKINS = [['night', 'Ночной синий'], ['violet', 'Фиолетовый'], ['indigo', 'Индиго'], ['cobalt', 'Кобальт'], ['moon', 'Лунный']];
+  var IRIS = [['#d99a2b', 'Янтарь'], ['#e4bf6c', 'Золото'], ['#5f9152', 'Зелёная'], ['#4d82c9', 'Голубая'], ['#8b67d6', 'Фиолетовая'], ['#8d97ab', 'Серая']];
+  var BROWS = [['#0b0d20', 'Графит'], ['#18214a', 'Тёмно-синий'], ['#3b2b22', 'Каштан'], ['#9ba3ba', 'Серебро'], ['#b8913f', 'Золото']];
 
-  var canvas = document.getElementById('eyes');
-  var stage = document.getElementById('stage');
+  function S(key, label, min, max, step, fmt) { return { type: 'slider', key: key, label: label, min: min, max: max, step: step, fmt: fmt }; }
+  var SECTIONS = [
+    { id: 'emotion', title: 'Эмоция', open: true, items: [
+      { type: 'emotions' },
+      S('intensity', 'Сила эмоции', 0, 1.5, 0.01, 'pct'),
+      { type: 'switches', items: [['follow', 'Следить за курсором'], ['blinking', 'Моргать самим'], ['@auto', 'Эмоции по кругу'], ['@blink', 'Моргнуть']] }
+    ] },
+    { id: 'skin', title: 'Кожа и фон', open: true, items: [
+      { type: 'skin' },
+      S('presence', 'Лицо из темноты', 0, 1, 0.01, 'pct'),
+      { type: 'segmented', key: 'bg', label: 'Фон сайта', options: [['night', 'Ночь'], ['day', 'День']] }
+    ] },
+    { id: 'eyes', title: 'Глаза', open: true, items: [
+      S('sep', 'Между глазами', 1.6, 2.6, 0.01, 'num'),
+      S('eyeOpen', 'Раскрытие век', 0.6, 1.3, 0.01, 'pct'),
+      S('tilt', 'Наклон разреза', -0.06, 0.08, 0.002, 'sgn3'),
+      S('zoom', 'Масштаб', 0.7, 1.6, 0.01, 'x')
+    ] },
+    { id: 'brows', title: 'Брови', open: true, items: [
+      S('browHeight', 'Над глазом', -0.25, 0.35, 0.005, 'sgn'),
+      S('browArch', 'Изгиб', 0, 2, 0.01, 'num'),
+      S('browTilt', 'Домик ↔ строго', -1, 1, 0.01, 'tilt'),
+      S('browLength', 'Длина хвоста', -0.3, 0.3, 0.005, 'sgn'),
+      S('browThick', 'Толщина', 0.6, 1.8, 0.01, 'num'),
+      S('browDensity', 'Густота', 0.4, 1.6, 0.01, 'num'),
+      S('browStrength', 'Контраст', 0.3, 2, 0.01, 'num'),
+      S('browMotion', 'Подвижность', 0, 2, 0.01, 'pct'),
+      { type: 'color', key: 'browColor', label: 'Цвет бровей', presets: BROWS }
+    ] },
+    { id: 'iris', title: 'Радужка и зрачок', open: false, items: [
+      { type: 'iris' },
+      S('irisTint', 'Сила цвета', 0, 1, 0.01, 'pct'),
+      S('irisSize', 'Размер радужки', 0.8, 1.2, 0.005, 'num'),
+      S('pupil', 'Зрачок', 0.6, 1.6, 0.01, 'num'),
+      S('sclera', 'Белки', 0.7, 1.2, 0.01, 'num'),
+      S('catchlight', 'Блик', 0, 2, 0.01, 'num'),
+      { type: 'switches', items: [['optics', 'Оптика в радужке']] },
+      S('glow', 'Свечение оптики', 0, 1, 0.01, 'pct')
+    ] },
+    { id: 'lashes', title: 'Ресницы', open: false, items: [
+      S('lashLen', 'Длина', 0.5, 1.6, 0.01, 'num'),
+      S('lashDensity', 'Густота', 0.5, 1.5, 0.01, 'num'),
+      S('lashCurl', 'Изгиб', 0, 2, 0.01, 'num')
+    ] },
+    { id: 'folds', title: 'Складки кожи', open: false, items: [
+      S('wrinkles', 'Глубина складок', 0, 2, 0.01, 'num'),
+      S('detail', 'Морщинки', 0, 2, 0.01, 'num'),
+      S('gloss', 'Блеск кожи', 0, 2, 0.01, 'num')
+    ] },
+    { id: 'light', title: 'Свет', open: false, items: [
+      S('lightAngle', 'Направление', -60, 60, 1, 'deg'),
+      S('light', 'Яркость', 0.5, 1.6, 0.01, 'num'),
+      S('rim', 'Золотой контур', 0, 2, 0.01, 'num')
+    ] },
+    { id: 'variants', title: 'Мои варианты', open: false, items: [{ type: 'variants' }] }
+  ];
+
+  function fmt(kind, v) {
+    switch (kind) {
+      case 'pct': return Math.round(v * 100) + '%';
+      case 'x': return '×' + v.toFixed(2);
+      case 'deg': return (v > 0 ? '+' : '') + Math.round(v) + '°';
+      case 'sgn': return (v > 0 ? '+' : '') + v.toFixed(2);
+      case 'sgn3': return (v > 0 ? '+' : '') + v.toFixed(3);
+      case 'tilt': return Math.abs(v) < 0.005 ? '0' : (v > 0 ? '▲ ' : '▼ ') + Math.abs(v).toFixed(2);
+      default: return v.toFixed(2);
+    }
+  }
+  function h(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === 'text') n.textContent = attrs[k];
+      else if (k === 'on') Object.keys(attrs.on).forEach(function (ev) { n.addEventListener(ev, attrs.on[ev]); });
+      else if (k === 'style') n.style.cssText = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function clean(obj) {
+    var out = {};
+    Object.keys(D).forEach(function (k) {
+      if (!obj || !(k in obj)) return;
+      var v = obj[k], t = typeof D[k];
+      if (t === 'number' && typeof v === 'number' && isFinite(v)) out[k] = v;
+      else if (t === 'boolean' && typeof v === 'boolean') out[k] = v;
+      else if (t === 'string' && typeof v === 'string' && v.length < 40) out[k] = v;
+    });
+    if (out.emotion && !LAB.PRESETS[out.emotion]) delete out.emotion;
+    return out;
+  }
+  function diff(c) { var o = {}; Object.keys(D).forEach(function (k) { if (c[k] !== D[k]) o[k] = typeof c[k] === 'number' ? Math.round(c[k] * 1000) / 1000 : c[k]; }); return o; }
+  function b64e(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function b64d(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return decodeURIComponent(escape(atob(s))); }
+  function linkFor(c) { return location.origin + location.pathname + '#c=' + b64e(JSON.stringify(diff(c))); }
+  function readHash() {
+    var hs = location.hash.replace(/^#/, '');
+    if (!hs) return null;
+    if (hs.indexOf('c=') === 0) { try { return clean(JSON.parse(b64d(hs.slice(2)))); } catch (e) { return null; } }
+    // links from the previous lab: emotion_skin_bg_optics|live_full|folds
+    var p = hs.split(/[_|]/), o = {};
+    if (LAB.PRESETS[p[0]]) o.emotion = p[0];
+    if (LAB.SKIN_PRESETS[p[1]]) o.skin = LAB.SKIN_PRESETS[p[1]];
+    if (p[2] === 'day' || p[2] === 'night') o.bg = p[2];
+    if (p.indexOf('optics') > -1) o.optics = true;
+    if (p.indexOf('folds') > -1) o.presence = 0.18;
+    return Object.keys(o).length ? o : null;
+  }
+  function load(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
+  function store(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) {} }
+
+  var cfg = Object.assign(clone(D), clean(load(STORE)), readHash() || {});
+  var canvas = document.getElementById('eyes'), stage = document.getElementById('stage');
   var lab = null;
-  try { lab = VijuEyeLab.create(canvas, { iris: 'iris.jpg' }); } catch (e) { lab = null; }
-  if (!lab) {
-    stage.innerHTML = '<div class="fallback">Этот браузер не поддерживает WebGL2, поэтому глаза не отрисовались. Откройте страницу в свежем Chrome, Safari или Firefox.</div>';
-    return;
+  try { lab = LAB.create(canvas, { iris: 'iris.jpg' }); } catch (e) { console.error(e); }
+  if (!lab) stage.appendChild(h('div', { class: 'fallback', text: 'Этому браузеру не хватает WebGL 2, поэтому глаза не показываются. Откройте страницу в свежем Chrome, Safari, Firefox или Edge.' }));
+
+  // ---------- controls ----------
+  var rows = {}, pressed = {}, auto = { on: false, timer: 0, i: 0 };
+  function setP(input) { var p = (input.value - input.min) / (input.max - input.min) * 100; input.style.setProperty('--p', p + '%'); }
+  function slider(it) {
+    var id = 'in-' + it.key;
+    var input = h('input', { type: 'range', id: id, min: it.min, max: it.max, step: it.step });
+    var out = h('output', { for: id });
+    var label = h('label', { for: id, text: it.label, title: 'Двойной щелчок — вернуть ' + fmt(it.fmt, D[it.key]) });
+    var row = h('div', { class: 'row' }, [label, input, out]);
+    input.addEventListener('input', function () { set(it.key, +input.value); });
+    label.addEventListener('dblclick', function (e) { e.preventDefault(); set(it.key, D[it.key]); });
+    rows[it.key] = function () { input.value = cfg[it.key]; setP(input); out.textContent = fmt(it.fmt, cfg[it.key]); row.classList.toggle('changed', Math.abs(cfg[it.key] - D[it.key]) > 1e-9); };
+    return row;
+  }
+  function switches(it) {
+    return h('div', { class: 'switches' }, it.items.map(function (s) {
+      var key = s[0];
+      if (key === '@blink') return h('button', { class: 'switch plain', type: 'button', text: s[1], on: { click: function () { lab && lab.blink(); } } });
+      var b = h('button', { class: 'switch', type: 'button', role: 'switch' }, [h('i'), h('span', { text: s[1] })]);
+      b.addEventListener('click', function () {
+        if (key === '@auto') { toggleAuto(!auto.on); return; }
+        set(key, !cfg[key]);
+      });
+      rows[key] = function () { b.setAttribute('aria-checked', String(key === '@auto' ? auto.on : !!cfg[key])); };
+      return b;
+    }));
+  }
+  function emotions() {
+    var wrap = h('div', { class: 'chips' });
+    EMOTIONS.forEach(function (e) {
+      var b = h('button', { class: 'chip', type: 'button', text: e[1], title: e[2] });
+      b.addEventListener('click', function () { toggleAuto(false); set('emotion', e[0]); });
+      wrap.appendChild(b);
+      pressed['emotion:' + e[0]] = b;
+    });
+    rows.emotion = function () {
+      EMOTIONS.forEach(function (e) { pressed['emotion:' + e[0]].setAttribute('aria-pressed', String(cfg.emotion === e[0])); });
+      var e = EMOTIONS.filter(function (x) { return x[0] === cfg.emotion; })[0] || EMOTIONS[0];
+      document.getElementById('capTitle').textContent = e[1];
+      document.getElementById('capText').textContent = e[2];
+    };
+    return wrap;
+  }
+  function swatchRow(label, key, presets, extra) {
+    var list = h('div', { class: 'sw-list' });
+    (extra || []).forEach(function (x) { list.appendChild(x); });
+    presets.forEach(function (p) {
+      var b = h('button', { class: 'sw', type: 'button', title: p[1], 'aria-label': p[1], style: 'background:' + p[0] });
+      b.addEventListener('click', function () { choose(key, p[0]); });
+      pressed[key + ':' + p[0]] = b;
+      list.appendChild(b);
+    });
+    var input = h('input', { type: 'color', 'aria-label': label + ': своя палитра' });
+    input.addEventListener('input', function () { choose(key, input.value); });
+    list.appendChild(h('label', { class: 'picker', title: 'Любой цвет: изменения видны сразу' }, [input, h('span', { text: 'Палитра' })]));
+    var prev = rows[key];
+    rows[key] = function () {
+      if (prev) prev();
+      input.value = /^#[0-9a-f]{6}$/i.test(cfg[key]) ? cfg[key] : '#000000';
+      presets.forEach(function (p) { pressed[key + ':' + p[0]].setAttribute('aria-pressed', String(key === 'irisColor' ? (cfg.irisTint > 0.01 && cfg[key].toLowerCase() === p[0]) : cfg[key].toLowerCase() === p[0])); });
+    };
+    return h('div', { class: 'colors' }, [h('span', { text: label }), list]);
+  }
+  function choose(key, value) {
+    var part = {}; part[key] = value;
+    if (key === 'irisColor' && cfg.irisTint < 0.5) part.irisTint = 0.85;
+    setMany(part);
+  }
+  function skinRow() {
+    var presets = SKINS.map(function (s) { return [LAB.SKIN_PRESETS[s[0]], s[1]]; });
+    return swatchRow('Цвет кожи', 'skin', presets);
+  }
+  function irisRow() {
+    var nat = h('button', { class: 'sw natural', type: 'button', title: 'Натуральная, как на фото', 'aria-label': 'Натуральная радужка' });
+    nat.addEventListener('click', function () { setMany({ irisTint: 0 }); });
+    rows.__irisNatural = function () { nat.setAttribute('aria-pressed', String(cfg.irisTint <= 0.01)); };
+    return swatchRow('Цвет радужки', 'irisColor', IRIS, [nat]);
+  }
+  function segmented(it) {
+    var seg = h('div', { class: 'seg', role: 'group', 'aria-label': it.label });
+    it.options.forEach(function (o) {
+      var b = h('button', { type: 'button', text: o[1] });
+      b.addEventListener('click', function () { set(it.key, o[0]); });
+      pressed[it.key + ':' + o[0]] = b;
+      seg.appendChild(b);
+    });
+    rows[it.key] = function () {
+      it.options.forEach(function (o) { pressed[it.key + ':' + o[0]].setAttribute('aria-pressed', String(cfg[it.key] === o[0])); });
+      stage.classList.toggle('day', cfg.bg === 'day');
+    };
+    return h('div', { class: 'colors' }, [h('span', { text: it.label }), h('div', {}, [seg])]);
   }
 
-  var state = { emotion: 'calm', skin: 'night', bg: 'night', optics: false, face: 'full' };
-  var emo = document.getElementById('emotions'), note = document.getElementById('emotionNote'), skins = document.getElementById('skins');
-  EMOTIONS.forEach(function (e) {
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = e[1]; b.dataset.id = e[0];
-    b.addEventListener('click', function () { stopAuto(); setEmotion(e[0]); });
-    emo.appendChild(b);
-  });
-  SKINS.forEach(function (s) {
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip swatch'; b.dataset.id = s[0];
-    b.innerHTML = '<i style="background:' + s[2] + '"></i>'; b.appendChild(document.createTextNode(s[1]));
-    b.addEventListener('click', function () { setSkin(s[0]); });
-    skins.appendChild(b);
-  });
-  function press(container, id) { [].forEach.call(container.children, function (c) { c.setAttribute('aria-pressed', String(c.dataset.id === id)); }); }
-  function saveHash() { try { history.replaceState(null, '', '#' + [state.emotion, state.skin, state.bg, state.optics ? 'optics' : 'live', state.face].join('_')); } catch (e) {} }
-  function setEmotion(id) {
-    var e = EMOTIONS.filter(function (x) { return x[0] === id; })[0]; if (!e) return;
-    state.emotion = id; lab.setEmotion(id); press(emo, id); note.textContent = e[2]; saveHash();
+  // ---------- saved variants ----------
+  var variants = load(VARIANTS) || [];
+  var variantBox = h('div', { class: 'variants' });
+  function emotionName(k) { var e = EMOTIONS.filter(function (x) { return x[0] === k; })[0]; return e ? e[1] : k; }
+  function renderVariants() {
+    variantBox.textContent = '';
+    if (!variants.length) variantBox.appendChild(h('p', { class: 'empty', text: 'Пока пусто. Нажмите «Запомнить текущий», чтобы сравнивать варианты между собой.' }));
+    variants.forEach(function (v, i) {
+      var c = Object.assign(clone(D), clean(v.cfg));
+      var apply = h('button', { class: 'apply', type: 'button' }, [h('b', { text: v.name }), h('small', { text: emotionName(c.emotion) + ' · кожа ' + c.skin + ' · изменено ' + Object.keys(diff(c)).length })]);
+      apply.addEventListener('click', function () { toggleAuto(false); replaceAll(c); toast('Загружен «' + v.name + '»'); });
+      var del = h('button', { class: 'del', type: 'button', 'aria-label': 'Удалить ' + v.name, text: '×' });
+      del.addEventListener('click', function () {
+        var removed = variants.splice(i, 1)[0]; store(VARIANTS, variants); renderVariants();
+        toast('Удалён «' + removed.name + '»', 'Вернуть', function () { variants.splice(i, 0, removed); store(VARIANTS, variants); renderVariants(); });
+      });
+      variantBox.appendChild(h('div', { class: 'variant' }, [apply, del]));
+    });
   }
-  function setSkin(id) { state.skin = id; lab.setSkin(id); press(skins, id); saveHash(); }
-  function setBg(day) {
-    state.bg = day ? 'day' : 'night'; lab.setDay(day); stage.classList.toggle('day', day);
-    document.getElementById('bgDay').setAttribute('aria-pressed', String(day)); document.getElementById('bgNight').setAttribute('aria-pressed', String(!day)); saveHash();
+  function variantsBlock() {
+    var add = h('button', { class: 'switch plain', type: 'button', text: 'Запомнить текущий' });
+    add.addEventListener('click', function () {
+      var n = 1; while (variants.some(function (v) { return v.name === 'Вариант ' + n; })) n++;
+      variants.unshift({ name: 'Вариант ' + n, cfg: diff(cfg), t: Date.now() });
+      variants = variants.slice(0, 16); store(VARIANTS, variants); renderVariants();
+      toast('Сохранён «Вариант ' + n + '»');
+    });
+    renderVariants();
+    return h('div', { style: 'display:grid;gap:8px' }, [add, variantBox]);
   }
-  function setFace(full) {
-    state.face = full ? 'full' : 'folds'; lab.setPresence(full ? 1 : 0.18);
-    document.getElementById('faceFull').setAttribute('aria-pressed', String(full)); document.getElementById('faceFolds').setAttribute('aria-pressed', String(!full)); saveHash();
-  }
-  function setOptics(on) {
-    state.optics = on; lab.setOptics(on);
-    document.getElementById('irisOptics').setAttribute('aria-pressed', String(on)); document.getElementById('irisLive').setAttribute('aria-pressed', String(!on)); saveHash();
-  }
-  document.getElementById('bgNight').addEventListener('click', function () { setBg(false); });
-  document.getElementById('bgDay').addEventListener('click', function () { setBg(true); });
-  document.getElementById('faceFull').addEventListener('click', function () { setFace(true); });
-  document.getElementById('faceFolds').addEventListener('click', function () { setFace(false); });
-  document.getElementById('irisLive').addEventListener('click', function () { setOptics(false); });
-  document.getElementById('irisOptics').addEventListener('click', function () { setOptics(true); });
-  document.getElementById('blink').addEventListener('click', function () { lab.blink(); });
 
-  var autoTimer = 0, autoBtn = document.getElementById('auto');
-  function stopAuto() { clearInterval(autoTimer); autoTimer = 0; autoBtn.setAttribute('aria-pressed', 'false'); }
-  autoBtn.addEventListener('click', function () {
-    if (autoTimer) { stopAuto(); return; }
-    autoBtn.setAttribute('aria-pressed', 'true');
-    var ids = EMOTIONS.map(function (e) { return e[0]; });
-    var next = function () { var i = ids.indexOf(state.emotion); setEmotion(ids[(i + 1) % ids.length]); };
-    next(); autoTimer = setInterval(next, 3200);
+  // ---------- build ----------
+  var sectionsEl = document.getElementById('sections');
+  var sectionKeys = {};
+  SECTIONS.forEach(function (sec) {
+    var body = h('div', { class: 'sec-body' });
+    var keys = [];
+    sec.items.forEach(function (it) {
+      if (it.type === 'slider') { body.appendChild(slider(it)); keys.push(it.key); }
+      else if (it.type === 'switches') { body.appendChild(switches(it)); it.items.forEach(function (s) { if (s[0][0] !== '@') keys.push(s[0]); }); }
+      else if (it.type === 'emotions') { body.appendChild(emotions()); keys.push('emotion'); }
+      else if (it.type === 'skin') { body.appendChild(skinRow()); keys.push('skin'); }
+      else if (it.type === 'iris') { body.appendChild(irisRow()); keys.push('irisColor'); }
+      else if (it.type === 'color') { body.appendChild(swatchRow(it.label, it.key, it.presets)); keys.push(it.key); }
+      else if (it.type === 'segmented') { body.appendChild(segmented(it)); keys.push(it.key); }
+      else if (it.type === 'variants') body.appendChild(variantsBlock());
+    });
+    sectionKeys[sec.id] = keys;
+    var det = h('details', { class: 'sec', 'data-sec': sec.id }, [h('summary', { text: sec.title }), body]);
+    if (keys.length) {
+      var reset = h('button', { class: 'sec-reset', type: 'button', text: 'сбросить', 'aria-label': 'Сбросить раздел «' + sec.title + '»' });
+      reset.addEventListener('click', function () {
+        var before = clone(cfg), part = {};
+        keys.forEach(function (k) { part[k] = D[k]; });
+        setMany(part);
+        toast('Раздел «' + sec.title + '» сброшен', 'Вернуть', function () { replaceAll(before); });
+      });
+      det.appendChild(reset);
+    }
+    var openState = load('viju-eye-open-v1') || {};
+    var small = window.matchMedia('(max-width: 900px)').matches, wide = window.matchMedia('(min-width: 1280px) and (min-height: 640px)').matches;
+    if (sec.id in openState ? openState[sec.id] : (wide || (sec.open && !(small && sec.id !== 'emotion')))) det.open = true;
+    det.addEventListener('toggle', function () { var o = load('viju-eye-open-v1') || {}; o[sec.id] = det.open; store('viju-eye-open-v1', o); });
+    sectionsEl.appendChild(det);
   });
-  var hint = document.getElementById('hint');
-  window.addEventListener('pointermove', function () { hint.style.opacity = '0'; }, { once: true, passive: true });
 
-  var parts = (location.hash || '').slice(1).split('_');
-  setEmotion(EMOTIONS.some(function (e) { return e[0] === parts[0]; }) ? parts[0] : 'calm');
-  setSkin(SKINS.some(function (s) { return s[0] === parts[1]; }) ? parts[1] : 'night');
-  setBg(parts[2] === 'day');
-  setOptics(parts[3] === 'optics');
-  setFace(parts[4] !== 'folds');
+  // ---------- state ----------
+  var saveTimer = 0;
+  function persist() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      store(STORE, diff(cfg));
+      try { history.replaceState(null, '', Object.keys(diff(cfg)).length ? linkFor(cfg) : location.pathname); } catch (e) {}
+    }, 250);
+  }
+  function refresh(keys) {
+    (keys || Object.keys(rows)).forEach(function (k) { if (rows[k]) rows[k](); });
+    if (rows.__irisNatural) rows.__irisNatural();
+    updateHint();
+  }
+  function set(key, value) { var p = {}; p[key] = value; setMany(p); }
+  function setMany(part) {
+    Object.keys(part).forEach(function (k) { cfg[k] = part[k]; });
+    if (lab) lab.setConfig(part);
+    refresh(Object.keys(part).concat(['irisColor', 'skin', 'browColor']));
+    persist();
+  }
+  function replaceAll(c) { cfg = Object.assign(clone(D), clean(c)); if (lab) lab.setConfig(cfg); refresh(); persist(); }
+  function updateHint() {
+    document.getElementById('hint').textContent = cfg.follow ? 'Глаза следят за курсором' : 'Слежение выключено';
+  }
+  function toggleAuto(on) {
+    if (auto.on === on) return;
+    auto.on = on; clearInterval(auto.timer);
+    if (on) {
+      auto.i = Math.max(0, EMOTIONS.findIndex(function (e) { return e[0] === cfg.emotion; }));
+      auto.timer = setInterval(function () { auto.i = (auto.i + 1) % EMOTIONS.length; set('emotion', EMOTIONS[auto.i][0]); }, 3200);
+    }
+    if (rows['@auto']) rows['@auto']();
+  }
+
+  // ---------- actions ----------
+  var toastTimer = 0;
+  function toast(text, actionLabel, action) {
+    var t = document.getElementById('toast'), a = document.getElementById('toastAction');
+    document.getElementById('toastText').textContent = text;
+    a.hidden = !actionLabel; a.textContent = actionLabel || '';
+    a.onclick = function () { t.classList.remove('show'); if (action) action(); };
+    t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, actionLabel ? 6000 : 2400);
+  }
+  function manual(text) {
+    var d = document.getElementById('manual'), ta = document.getElementById('manualText');
+    ta.value = text;
+    if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+    ta.focus(); ta.select();
+  }
+  document.getElementById('manualClose').addEventListener('click', function () { var d = document.getElementById('manual'); if (d.close) d.close(); else d.removeAttribute('open'); });
+  function copy(text, okText) {
+    function fallback() {
+      var ta = h('textarea', { readonly: '', style: 'position:fixed;top:0;left:0;opacity:0' }); ta.value = text;
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+      if (ok) toast(okText); else manual(text);
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(function () { toast(okText); }, fallback);
+    else fallback();
+  }
+  document.getElementById('copyCfg').addEventListener('click', function () {
+    var full = {}; Object.keys(D).forEach(function (k) { full[k] = typeof cfg[k] === 'number' ? Math.round(cfg[k] * 1000) / 1000 : cfg[k]; });
+    var text = 'Вижу · настройки глаз (редактор, движок v4)\nСсылка: ' + linkFor(cfg) + '\nИзменено: ' + (Object.keys(diff(cfg)).join(', ') || 'ничего') + '\n' + JSON.stringify(full, null, 2);
+    copy(text, 'Настройки скопированы. Вставьте их в сообщение');
+  });
+  document.getElementById('copyLink').addEventListener('click', function () {
+    var url = linkFor(cfg);
+    if (navigator.share && window.matchMedia('(max-width: 900px)').matches) {
+      navigator.share({ title: 'Глаза ВИЖУ: мой вариант', url: url }).catch(function (e) { if (e && e.name !== 'AbortError') copy(url, 'Ссылка скопирована'); });
+    } else copy(url, 'Ссылка на этот вариант скопирована');
+  });
+  document.getElementById('savePng').addEventListener('click', function () {
+    if (!lab) return;
+    var a = h('a', { href: lab.snapshot(cfg.bg === 'day' ? '#f6f1e8' : '#0b1230'), download: 'vizhu-glaza-' + cfg.emotion + '.png' });
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Картинка сохранена');
+  });
+  document.getElementById('resetAll').addEventListener('click', function () {
+    var before = clone(cfg);
+    toggleAuto(false); replaceAll(D);
+    toast('Все настройки сброшены', 'Вернуть', function () { replaceAll(before); });
+  });
+
+  if (lab) lab.setConfig(cfg);
+  refresh();
+  if (readHash()) persist();
 })();
 </script>
 </body>

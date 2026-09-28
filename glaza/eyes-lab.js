@@ -1,8 +1,10 @@
-// Вижу · лаборатория глаз, версия 2.
-// Один фрагментный шейдер WebGL2. Глазное яблоко с преломлением в роговице,
-// лицо с анатомическими пропорциями (межглазье = ширина глаза, брови на своей
-// высоте), кожа с объёмом и складками по мимическим мышцам, брови из отдельных
-// волосков, ресницы из отдельных изогнутых ресничек.
+// Вижу · лаборатория глаз, версия 4 (редактор).
+// Один фрагментный шейдер WebGL2: глазное яблоко с преломлением в роговице,
+// лицо с человеческими пропорциями, брови из отдельных волосков поверх мягкого тона,
+// ресницы пучками. Складки кожи устроены как у сжатой кожи: скруглённые валики,
+// острое дно складки, анатомический шаг линий. Свет считается по двум нормалям:
+// мягкой (рассеяние под кожей) и резкой (линия складки и блики на валиках).
+// Все параметры внешности настраиваются через setConfig().
 (function () {
   'use strict';
 
@@ -11,13 +13,22 @@ precision highp float;
 uniform vec2 uRes; uniform vec2 uMid; uniform float uScale; uniform float uSep;
 uniform vec4 uGaze;
 uniform vec4 uA0, uA1;   // open, blink, lowerRaise (cheek + lower lid), crow's feet
-uniform vec4 uB0, uB1;   // innerBrow raise, outerBrow raise, brow lower, corrugator pinch
+uniform vec4 uB0, uB1;   // inner brow raise, outer brow raise, brow lower, corrugator pinch
 uniform vec4 uC;         // glabella lines, nasal root lines, forehead lines, under-eye
 uniform vec2 uPupil;
-uniform vec3 uSkin, uSSS, uSheen, uBrowCol, uLidInner;
-uniform float uDay, uOptics, uHasIris, uPresence;
+uniform vec3 uSkin, uSSS, uSheen, uBrowCol, uLidInner, uIrisTint;
+uniform float uDay, uOptics, uGlow, uHasIris, uPresence;
+uniform vec4 uBrow;      // height offset, arch, tilt, length
+uniform vec3 uBrowLook;  // thickness, density, strength
+uniform float uOpenMul, uTilt, uIrisScale, uPupilMul, uIrisTintAmt, uSclera, uCatch;
+uniform vec3 uLash;      // length, density, curl
+uniform vec3 uSkinLook;  // wrinkle depth, fine detail, gloss
+uniform vec3 uLight;     // angle (radians), key intensity, gold rim
 uniform sampler2D uIris;
 out vec4 outColor;
+#define uWrinkle uSkinLook.x
+#define uDetail uSkinLook.y
+#define uGloss uSkinLook.z
 const float PI = 3.14159265;
 
 float hash21(vec2 p){ p = fract(p*vec2(233.34, 851.73)); p += dot(p, p + 23.45); return fract(p.x*p.y); }
@@ -26,128 +37,200 @@ float noise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f*f*(3. - 2.*f);
   return mix(mix(hash21(i), hash21(i + vec2(1, 0)), u.x), mix(hash21(i + vec2(0, 1)), hash21(i + vec2(1, 1)), u.x), u.y); }
 float fbm(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 4; i++) { s += a*noise(p); p = p*2.03 + 7.1; a *= .5; } return s; }
 vec3 lin(vec3 c){ return pow(c, vec3(2.2)); }
+float luma(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 float pores(vec2 p){ vec2 i = floor(p), f = fract(p); float md = 1.;
   for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 g = vec2(x, y); vec2 r = g + hash22(i + g) - f; md = min(md, dot(r, r)); }
   return sqrt(md); }
-// A skin fold: a soft valley with slightly raised shoulders on both sides.
-float fold(float d, float w){ return -exp(-(d*d)/(w*w)) + 0.10*exp(-pow((abs(d) - 1.7*w)/(0.9*w), 2.)); }
+vec3 keyDir(){ float a = uLight.x; vec2 xy = vec2(-0.50, 0.62); xy = vec2(xy.x*cos(a) - xy.y*sin(a), xy.x*sin(a) + xy.y*cos(a)); return normalize(vec3(xy, 0.55)); }
+
+// Compressed skin buckles into rounded ridges with sharp creases between them.
+// u is measured in line spacings: creases at whole numbers, ridge tops halfway (value 0 there).
+float ridges(float u){
+  float v = abs(fract(u + 0.5) - 0.5)*2.;
+  return pow(1. - (1. - v)*(1. - v), 0.55) - 1.;
+}
+// A single crease: a sharp line at d = 0, walls rising to rounded shoulders at |d| ~ w,
+// and a roll of bunched skin beside it (the d < 0 side rolls less when asym < 1).
+float crease(float d, float w, float asym){
+  float x = min(abs(d)/w, 1.);
+  float wall = pow(1. - (1. - x)*(1. - x), 0.55) - 1.;
+  float side = mix(asym, 1., smoothstep(-0.3*w, 0.3*w, d));
+  return wall + 0.38*side*exp(-pow((abs(d) - 1.05*w)/(0.62*w), 2.));
+}
+
+// A fine line: a narrow V at the bottom with soft shoulders and a low roll of bunched skin.
+float notch(float d, float w){
+  float x = abs(d)/w;
+  return -exp(-x) + 0.16*exp(-pow((x - 2.4)/1.4, 2.));
+}
+// A crease along a gently bent path: origin o, direction a, bend c, length len, width w.
+// Tapers in at the start, fades out at the end, depth wanders a little along the way.
+float creaseLine(vec2 P, vec2 o, float a, float c, float len, float w, float seed){
+  vec2 d = P - o;
+  float cs = cos(a), sn = sin(a);
+  float s = d.x*cs + d.y*sn;
+  if (s < -0.03 || s > len) return 0.;
+  float n = -d.x*sn + d.y*cs - c*s*s - 0.008*sin(s*15. + seed*3.);
+  float ww = w*(1. + 0.6*s/len);
+  if (abs(n) > 12.*ww) return 0.;
+  float env = smoothstep(-0.03, 0.10, s)*smoothstep(len, len*0.40, s);
+  return notch(n, ww)*env*(0.75 + 0.25*noise(vec2(s*7., seed*5.)));
+}
 
 // ---------------- eyelids ----------------
 void lidCurves(float xl, vec4 A, float gy, out float up, out float lo, out float k, out float t){
   t = clamp(xl, -1., 1.);
   k = max(1. - t*t, 0.);
-  float base = mix(-0.17, -0.075, (t + 1.)*.5);
-  up = base + (0.445*A.x)*pow(k, 0.80)*(1. - 0.10*t) + gy*0.13*k;
-  lo = base - (0.275 - 0.09*A.z)*pow(k, 1.10)*(1. + 0.16*t) + gy*0.05*k + A.z*0.03*k;
+  float tilt = 0.0475 + uTilt;
+  float base = mix(-0.1225 - tilt, -0.1225 + tilt, (t + 1.)*.5);
+  float open = A.x*uOpenMul;
+  up = base + (0.445*open)*pow(k, 0.80)*(1. - 0.10*t) + gy*0.13*k;
+  lo = base - (0.275 - 0.09*A.z)*mix(1., uOpenMul, 0.5)*pow(k, 1.10)*(1. + 0.16*t) + gy*0.05*k + A.z*0.03*k;
   float meet = lo + 0.03*k;
   up = mix(up, meet, A.y);
   lo = mix(lo, meet - 0.004, A.y*0.12);
 }
 
 // ---------------- brows ----------------
-float browS(float xl, vec4 B){ float xh = -1.05 - 0.10*B.w; float xt = 1.36 - 0.03*B.w; return (xl - xh)/(xt - xh); }
+float browXH(vec4 B){ return -1.05 - 0.10*B.w; }
+float browXT(vec4 B){ return 1.30 - 0.03*B.w + uBrow.w; }
+float browS(float xl, vec4 B){ float xh = browXH(B); return (xl - xh)/(browXT(B) - xh); }
 float browC(float s, vec4 B){
   float sc = clamp(s, 0., 1.);
-  float y = 1.30 + 0.19*sin(PI*pow(sc, 0.85)) - 0.13*pow(max(sc - 0.62, 0.)/0.38, 1.6);
+  float y = 1.30 + uBrow.x + 0.19*uBrow.y*sin(PI*pow(sc, 0.85)) - 0.13*pow(max(sc - 0.62, 0.)/0.38, 1.6);
+  y += 0.16*uBrow.z*(0.45 - sc);
   y += 0.30*B.x*pow(1. - sc, 1.6);
   y += 0.26*B.y*pow(sc, 1.2);
   y -= 0.24*B.z*(1. - 0.45*sc);
   y -= 0.10*B.w*pow(1. - sc, 2.);
   return y;
 }
-float browTh(float s){ float sc = clamp(s, 0., 1.); return mix(0.40, 0.085, smoothstep(0.10, 1.0, sc))*mix(0.78, 1.0, smoothstep(-0.05, 0.12, s)); }
-float browTangent(float s, vec4 B){ float xh = -1.05 - 0.10*B.w, xt = 1.36 - 0.03*B.w; float e = 0.02;
-  return atan((browC(s + e, B) - browC(s - e, B))/(2.*e*(xt - xh))); }
+float browTh(float s){ float sc = clamp(s, 0., 1.); return uBrowLook.x*mix(0.40, 0.085, smoothstep(0.10, 1.0, sc))*mix(0.78, 1.0, smoothstep(-0.05, 0.12, s)); }
+float browTangent(float s, vec4 B){ float e = 0.02;
+  return atan((browC(s + e, B) - browC(s - e, B))/(2.*e*(browXT(B) - browXH(B)))); }
 float browAngle(float s, float dn, vec4 B){
   float sc = clamp(s, 0., 1.);
-  float head = 1.45 + 0.35*B.x - 0.30*B.w;
-  float body = browTangent(sc, B) + 0.22 + mix(0.24, -0.26, dn*0.5 + 0.5);
+  float head = 1.28 - 0.14*dn + 0.35*B.x - 0.30*B.w;
+  float body = browTangent(sc, B) + 0.20 + mix(0.30, -0.28, dn*0.5 + 0.5);
   return mix(head, body, smoothstep(0.04, 0.32, sc));
 }
 
 // ---------------- skin form ----------------
-float eyeForm(vec2 p, float side, vec4 A, vec4 B, float gy, float ue){
+// Crow's feet: separate creases fanning out from beyond the outer corner, the lower ones
+// sweeping down along the cheek; finer lines further out; the skin there bunches as a whole.
+float crowsFeet(vec2 P, float amt, float D, float seed){
+  vec2 c0 = P - vec2(1.22, -0.08);
+  if (dot(c0, c0) > 0.75) return 0.;
+  float j = seed*1.7;
+  float h = 0.;
+  h += 0.80*creaseLine(P, vec2(1.19, 0.05 + 0.02*sin(j)), 0.30 + 0.05*sin(j), 0.10, 0.40, 0.016, j + 1.);
+  h += 1.00*creaseLine(P, vec2(1.14, -0.05), 0.02 + 0.04*sin(j*2.), -0.18, 0.58, 0.019, j + 2.);
+  h += 0.90*creaseLine(P, vec2(1.21, -0.17 + 0.02*sin(j*2.)), -0.30 + 0.05*sin(j*3.), -0.34, 0.50, 0.018, j + 3.);
+  h += 0.65*creaseLine(P, vec2(1.07, -0.27), -0.66, -0.36, 0.42, 0.016, j + 4.);
+  h += 0.45*D*creaseLine(P, vec2(1.40, -0.10), 0.12, -0.05, 0.26, 0.011, j + 5.);
+  h += 0.40*D*creaseLine(P, vec2(1.36, 0.14), 0.45, 0.10, 0.22, 0.010, j + 6.);
+  h += 0.35*D*creaseLine(P, vec2(1.33, -0.30), -0.45, -0.30, 0.26, 0.011, j + 7.);
+  vec2 cb = c0*vec2(1.0, 1.3);
+  return amt*(0.017*h + 0.018*exp(-dot(cb, cb)/0.09));
+}
+// Under the eye: fine lines of a smile following the lower lid, strongest toward the outer corner.
+float underLines(float xl, float belowL, float amt, float D, float seed){
+  if (belowL < 0.03 || belowL > 0.42 || xl < -0.7 || xl > 1.35) return 0.;
+  float h = 0.;
+  float wob = 0.6 + 0.4*noise(vec2(xl*3.1, seed*2.));
+  h += wob*notch(belowL - 0.132 - 0.012*sin(xl*4.3 + seed) + 0.02*xl, 0.013)*smoothstep(-0.10, 0.45, xl)*smoothstep(1.20, 0.88, xl);
+  h += 0.70*(1.4 - wob)*notch(belowL - 0.235 + 0.06*xl - 0.012*sin(xl*3.1 + seed*2.), 0.014)*smoothstep(0.30, 0.70, xl)*smoothstep(1.30, 1.00, xl);
+  h += 0.40*D*notch(belowL - 0.090 - 0.006*sin(xl*7. + seed), 0.008)*smoothstep(0.40, 0.70, xl)*smoothstep(1.05, 0.85, xl);
+  return amt*0.011*h;
+}
+float eyeForm(vec2 p, float side, vec4 A, vec4 B, float gy, float ue, float seed){
   float xl = p.x*side;
   float up, lo, k, t; lidCurves(xl, A, gy, up, lo, k, t);
   float aboveU = p.y - up, belowL = lo - p.y;
-  float spanU = smoothstep(1.15, 0.6, abs(xl));
+  float W = uWrinkle, D = uDetail;
+  // the globe under the lids and the orbit around it
   float h = 0.12*exp(-dot(p*vec2(0.85, 1.0), p*vec2(0.85, 1.0))/0.9);
-  float cr = 0.20 + 0.06*(1. - clamp(A.x, 0., 1.3));
-  h += 0.030*smoothstep(0.0, 0.06, aboveU)*smoothstep(cr + 0.02, cr - 0.04, aboveU)*spanU;
-  h += 0.010*exp(-pow((aboveU - cr - 0.06)/0.08, 2.))*spanU;
-  h -= 0.018*exp(-pow((aboveU - cr + 0.005)/0.03, 2.))*spanU;
+  // upper lid: a smooth tarsal band, then the crease with the orbital fold rolling over it
+  float spanU = smoothstep(1.12, 0.50, abs(xl - 0.05));
+  float open = clamp(A.x*uOpenMul, 0., 1.4);
+  float cr = 0.21 + 0.07*(1. - min(open, 1.)) - 0.02*t;
+  h += 0.014*smoothstep(0.0, 0.05, aboveU)*smoothstep(cr + 0.01, 0.02, aboveU)*spanU;
+  h += 0.017*crease(aboveU - cr, 0.09, 0.25)*spanU*smoothstep(-0.02, 0.06, aboveU);
   float bs = browS(xl, B); float yb = browC(bs, B);
-  h -= 0.028*exp(-pow((p.y - mix(up + cr + 0.10, yb - 0.22, 0.5))/0.30, 2.))*smoothstep(1.3, 0.4, abs(xl - 0.05));
+  // the sulcus under the brow bone, then the brow ridge
+  h -= 0.030*exp(-pow((p.y - mix(up + cr + 0.12, yb - 0.22, 0.5))/0.28, 2.))*smoothstep(1.3, 0.4, abs(xl - 0.05));
   h += 0.07*exp(-pow((p.y - (yb - 0.02))/0.34, 2.))*smoothstep(1.9, 0.6, abs(xl - 0.1));
-  h += (0.016 + 0.05*A.z)*exp(-pow((belowL - 0.07)/0.05, 2.))*smoothstep(1.05, 0.6, abs(xl));
-  float yj = 0.23 - 0.05*A.z;
-  h -= (0.016 + 0.02*ue)*exp(-pow((belowL - yj)/0.055, 2.))*smoothstep(1.1, 0.2, abs(xl + 0.1));
+  // lower lid: the pretarsal roll (grows in a smile), the lid-cheek groove, the cheek
+  h += (0.012 + 0.045*A.z)*exp(-pow((belowL - 0.062 - 0.012*A.z)/0.048, 2.))*smoothstep(1.05, 0.55, abs(xl));
+  float yj = 0.20 - 0.04*A.z;
+  h += (0.008 + 0.016*ue)*W*crease(belowL - yj, 0.065, 0.6)*smoothstep(1.1, 0.2, abs(xl + 0.05));
   h += (0.06 + 0.11*A.z)*exp(-pow((belowL - 0.47 + 0.07*A.z)/0.26, 2.))*smoothstep(1.7, 0.3, abs(xl - 0.15));
-  // crow's feet: radial creases fanning from beyond the outer corner, bending down with the cheek
-  if (A.w > 0.01) {
-    vec2 d = vec2(xl, p.y) - vec2(1.02, -0.06);
-    float r = length(d);
-    if (r < 0.78 && d.x > -0.28) {
-      float th = atan(d.y, d.x);
-      for (int i = 0; i < 4; i++) {
-        float fi = float(i);
-        float a0 = mix(-0.60, 0.46, fi/3.) + 0.05*sin(fi*2.7);
-        float dth = th - (a0 - 0.30*r*(0.8 - fi*0.25));
-        float wid = 0.050 + 0.035*r;
-        float along = smoothstep(0.15, 0.28, r)*smoothstep(0.70 - 0.07*abs(fi - 1.5), 0.36, r);
-        h += A.w*along*0.030*(0.75 + 0.25*noise(vec2(r*6., fi*3.)))*fold(r*dth, wid);
-      }
-    }
-  }
-  if (A.z > 0.01) {
-    h += A.z*0.016*fold(belowL - yj*0.60, 0.034)*smoothstep(0.95, 0.25, abs(xl - 0.3));
-    h += A.z*0.009*fold(belowL - yj*0.95, 0.03)*smoothstep(0.7, 0.2, abs(xl - 0.5));
-  }
+  float crow = A.w*W;
+  if (crow > 0.004) h += crowsFeet(vec2(xl, p.y), crow, D, seed);
+  float smile = A.z*W;
+  if (smile > 0.004) h += underLines(xl, belowL, smile, D, seed);
   return h;
 }
 float innerBrowY(){ return 0.5*(browC(0., uB0) + browC(0., uB1)); }
 float globalForm(vec2 q){
   float yI = innerBrowY();
+  float W = uWrinkle, D = uDetail;
+  float ax = abs(q.x);
+  // the nasal bridge and the forehead
   float h = 0.10*exp(-pow(q.x/0.45, 2.))*smoothstep(1.0, 0.1, q.y);
   h += 0.05*smoothstep(yI, yI + 0.6, q.y);
-  float g = uC.x;
-  if (g > 0.01) {
+  // frown: two vertical creases (the "11"), deepest low down, with bunched skin between
+  // and above the brow heads
+  float g = uC.x*W;
+  if (g > 0.004) {
+    float x0 = 0.25 - 0.05*uC.x;
+    float yy = q.y - yI;
     for (int si = 0; si < 2; si++) {
       float sg = si == 0 ? -1. : 1.;
-      float xw = q.x - sg*(0.21 - 0.05*g) - sg*0.08*(q.y - yI);
-      float along = smoothstep(yI - 0.55, yI - 0.28, q.y)*smoothstep(yI + 0.36, yI + 0.04, q.y);
-      h += g*0.034*fold(xw, 0.060)*along;
-
+      float xw = q.x - sg*(x0 + 0.09*yy + 0.05*yy*yy) - 0.010*sin(q.y*11. + sg*2.);
+      float env = smoothstep(-0.52, -0.30, yy)*smoothstep(0.30, 0.02, yy);
+      float dep = mix(1.0, 0.55, smoothstep(-0.30, 0.25, yy))*(0.85 + 0.15*noise(vec2(q.y*5., sg*4.)));
+      h += g*0.024*notch(xw, 0.028)*env*dep;
+      float xw2 = q.x - sg*(x0 + 0.14 + 0.14*yy);
+      float env2 = smoothstep(-0.26, -0.12, yy)*smoothstep(0.18, 0.0, yy);
+      h += g*D*0.010*notch(xw2, 0.018)*env2;
     }
-    h += g*0.030*exp(-pow(q.x/0.12, 2.) - pow((q.y - yI + 0.10)/0.26, 2.));
+    h += g*0.030*exp(-pow(q.x/0.14, 2.) - pow((yy + 0.12)/0.28, 2.));
+    h += g*0.020*exp(-pow((ax - x0 - 0.26)/0.20, 2.) - pow((yy - 0.02)/0.20, 2.));
   }
-  if (uC.y > 0.01) {
-    for (int j = 0; j < 1; j++) {
-      float yj = yI - 0.64 - float(j)*0.09;
-      h += uC.y*0.015*fold(q.y - yj - 0.02*sin(q.x*6.), 0.040)*smoothstep(0.36, 0.08, abs(q.x));
-    }
+  // procerus: short curved lines across the root of the nose
+  float n = uC.y*W;
+  if (n > 0.004) {
+    float yn = yI - 0.64;
+    h += n*0.014*notch(q.y - yn - 0.35*q.x*q.x, 0.022)*smoothstep(0.36, 0.12, ax);
+    h += n*D*0.008*notch(q.y - yn + 0.10 - 0.30*q.x*q.x, 0.016)*smoothstep(0.28, 0.08, ax);
+    h += n*0.012*exp(-pow(q.x/0.30, 2.) - pow((q.y - yn - 0.06)/0.10, 2.));
   }
-  if (uC.z > 0.01) {
-    for (int j = 0; j < 3; j++) {
-      float fj = float(j);
-      float ax = abs(q.x);
-      float arch = 0.10*exp(-pow((ax - uSep*0.72)/0.95, 2.));
-      float yj = yI + 0.30 + fj*0.14 + arch + 0.015*sin(q.x*3.1 + fj*1.7);
-      float spanF = (exp(-pow((ax - uSep*0.78)/0.95, 2.)) + 0.35*uB0.x*exp(-pow(ax/0.45, 2.)))*smoothstep(0.25, 0.65, noise(vec2(q.x*2.2 + fj*5., fj*3.)) + 0.25);
-      h += uC.z*0.020*fold(q.y - yj, 0.050)*spanF;
+  // raised brows: wavy lines across the forehead following the brows, broken here and there
+  float f = uC.z*W;
+  if (f > 0.004) {
+    float yb = yI + 0.40;
+    float arch = 0.10*exp(-pow((ax - uSep*0.70)/0.95, 2.)) - 0.06*exp(-pow(ax/0.55, 2.));
+    float spanF = exp(-pow((ax - uSep*0.78)/1.10, 2.)) + 0.5*uB0.x*exp(-pow(ax/0.60, 2.));
+    for (int i = 0; i < 4; i++) {
+      float fi = float(i);
+      float yl = yb + fi*0.32 + arch*(1. + 0.3*fi) + 0.022*sin(q.x*2.1 + fi*1.9) + 0.03*(noise(vec2(q.x*1.2, fi*3.)) - 0.5);
+      float brk = smoothstep(0.16, 0.48, noise(vec2(q.x*1.5 + fi*4.1, fi*1.7 + 2.)));
+      h += f*0.020*notch(q.y - yl, 0.024 + 0.004*fi)*(1. - 0.15*fi)*brk*spanF;
+      h += f*D*0.007*notch(q.y - yl - 0.16 - 0.02*sin(q.x*3.3 + fi), 0.012)*spanF*smoothstep(0.35, 0.70, noise(vec2(q.x*2.2, fi + 7.)));
     }
+    h += f*0.012*spanF*smoothstep(yb - 0.15, yb + 0.1, q.y);
   }
   return h;
 }
 float totalH(vec2 q){
   float h = globalForm(q);
-  h += eyeForm(q - vec2(-uSep, 0.), -1., uA0, uB0, uGaze.y, uC.w);
-  h += eyeForm(q - vec2( uSep, 0.),  1., uA1, uB1, uGaze.w, uC.w);
-  h += 0.00016*(1. - pores(q*80.)) + 0.00008*noise(q*200.);
+  h += eyeForm(q - vec2(-uSep, 0.), -1., uA0, uB0, uGaze.y, uC.w, 1.3);
+  h += eyeForm(q - vec2( uSep, 0.),  1., uA1, uB1, uGaze.w, uC.w, 5.0);
   return h;
 }
 float presence(vec2 q){
-  float m = 0.; float keep = 1.;
+  float keep = 1.;
   for (int e = 0; e < 2; e++) {
     float cx = e == 0 ? -uSep : uSep;
     vec2 d = (q - vec2(cx*0.96, 0.72))/vec2(2.05, 1.95);
@@ -156,9 +239,9 @@ float presence(vec2 q){
   keep *= 1. - 0.9*exp(-pow(q.x/1.3, 2.) - pow((q.y - 0.95)/1.45, 2.));
   return 1. - keep;
 }
-// Where expressions fold the skin, it shows up even in the minimal skin mode.
+// Where expressions fold the skin, it shows up even when the face is faded out.
 float expressionReveal(vec2 q){
-  float r = 0.;
+  float keep = 1.;
   for (int e = 0; e < 2; e++) {
     float sd = e == 0 ? -1. : 1.;
     vec4 A = e == 0 ? uA0 : uA1; vec4 B = e == 0 ? uB0 : uB1;
@@ -167,16 +250,16 @@ float expressionReveal(vec2 q){
     float near = exp(-max(max(p.y - up, lo - p.y), 0.)/0.14)*smoothstep(1.35, 0.95, abs(xl));
     float bs = browS(xl, B);
     float brow = 0.75*exp(-pow((p.y - browC(bs, B))/0.32, 2.))*smoothstep(-0.25, 0.05, bs)*smoothstep(1.2, 0.95, bs);
-    vec2 d = vec2(xl, p.y) - vec2(1.02, -0.06);
-    float crow = A.w*smoothstep(0.75, 0.15, length(d*vec2(0.9, 1.1)))*smoothstep(-0.4, 0.05, d.x);
-    float under = max(uC.w, A.z)*exp(-pow((lo - p.y - 0.25)/0.2, 2.))*smoothstep(1.25, 0.35, abs(xl - 0.1));
-    r = max(r, max(max(near, brow), max(crow, under)));
+    vec2 d = vec2(xl, p.y) - vec2(1.10, -0.10);
+    float crow = A.w*smoothstep(0.85, 0.15, length(d*vec2(0.9, 1.1)))*smoothstep(-0.45, 0.05, d.x);
+    float under = max(uC.w, A.z)*exp(-pow((lo - p.y - 0.25)/0.2, 2.))*smoothstep(1.3, 0.35, abs(xl - 0.1));
+    keep *= (1. - near)*(1. - brow)*(1. - crow)*(1. - under);
   }
   float yI = innerBrowY();
-  r = max(r, uC.x*exp(-pow(q.x/0.45, 2.) - pow((q.y - yI + 0.1)/0.45, 2.)));
-  r = max(r, uC.y*exp(-pow(q.x/0.4, 2.) - pow((q.y - yI + 0.68)/0.2, 2.)));
-  r = max(r, uC.z*0.9*exp(-pow((abs(q.x) - uSep*0.7)/1.3, 2.) - pow((q.y - yI - 0.46)/0.35, 2.)));
-  return r;
+  keep *= 1. - uC.x*exp(-pow(q.x/0.50, 2.) - pow((q.y - yI + 0.1)/0.48, 2.));
+  keep *= 1. - uC.y*exp(-pow(q.x/0.4, 2.) - pow((q.y - yI + 0.64)/0.2, 2.));
+  keep *= 1. - uC.z*0.9*exp(-pow((abs(q.x) - uSep*0.7)/1.3, 2.) - pow((q.y - yI - 0.62)/0.45, 2.));
+  return 1. - keep;
 }
 
 // ---------------- lighting ----------------
@@ -184,9 +267,9 @@ vec3 env(vec3 d, float day){
   vec3 sky = mix(vec3(0.004, 0.006, 0.02), vec3(0.18, 0.16, 0.14), day);
   vec2 w = vec2(d.x + 0.42, d.y - 0.46);
   float rr = length(max(abs(w) - vec2(0.085, 0.060), 0.)) - 0.05;
-  vec3 c = sky + vec3(1.0, 0.97, 0.92)*smoothstep(0.035, -0.025, rr)*20.;
+  vec3 c = sky + vec3(1.0, 0.97, 0.92)*smoothstep(0.035, -0.025, rr)*20.*uCatch;
   vec2 gd = d.xy - vec2(0.56, -0.34);
-  return c + lin(vec3(0.91, 0.74, 0.33))*exp(-60.*dot(gd, gd))*3.0;
+  return c + lin(vec3(0.91, 0.74, 0.33))*exp(-60.*dot(gd, gd))*3.0*(0.4 + 0.6*uLight.z)*min(uCatch, 1.5);
 }
 float lashShade(vec2 q){
   float o = 1.;
@@ -197,26 +280,39 @@ float lashShade(vec2 q){
     float up, lo, k, t; lidCurves(xl, A, 0., up, lo, k, t);
     float aboveU = p.y - up;
     float span = smoothstep(1.12, 0.8, abs(xl));
-    o *= 1. - 0.62*span*smoothstep(-0.01, 0.01, aboveU)*smoothstep(0.13, 0.0, aboveU);
+    o *= 1. - 0.55*span*smoothstep(-0.01, 0.01, aboveU)*smoothstep(0.12*uLash.x, 0.0, aboveU);
     float bs = browS(xl, B); float dn = (p.y - browC(bs, B))/(browTh(bs)*0.5);
-    o *= 1. - 0.30*smoothstep(1.3, 0.3, abs(dn))*smoothstep(-0.1, 0.1, bs)*smoothstep(1.1, 0.9, bs);
+    o *= 1. - 0.22*min(uBrowLook.z, 1.5)*smoothstep(1.4, 0.3, abs(dn))*smoothstep(-0.1, 0.1, bs)*smoothstep(1.1, 0.9, bs);
   }
   return o;
 }
+float micro(vec2 q){ return (1. - pores(q*40.))*0.00020 + noise(q*90.)*0.00006; }
 vec3 shadeSkin(vec2 q, float pres){
-  float e = 1.1/uScale;
+  // Light scatters under the skin, so diffuse shading follows a normal blurred over ~0.7 mm;
+  // only glints and the dark bottom of a crease stay sharp.
+  float e = 1.0/uScale, E = max(0.045, 1.6/uScale);
   float h0 = totalH(q);
   float hxp = totalH(q + vec2(e, 0.)), hxm = totalH(q - vec2(e, 0.));
   float hyp = totalH(q + vec2(0., e)), hym = totalH(q - vec2(0., e));
-  vec3 N = normalize(vec3(-(hxp - hxm)/(2.*e), -(hyp - hym)/(2.*e), 1.));
-  float lap = (hxp + hxm + hyp + hym - 4.*h0)/(e*e);
-  float cavity = clamp(lap*0.022, -0.30, 0.55);
+  float Hxp = totalH(q + vec2(E, 0.)), Hxm = totalH(q - vec2(E, 0.));
+  float Hyp = totalH(q + vec2(0., E)), Hym = totalH(q - vec2(0., E));
+  vec2 gs = vec2(hxp - hxm, hyp - hym)/(2.*e);
+  gs *= min(1., 1.1/max(length(gs), 1e-4));
+  float m0 = micro(q);
+  vec2 gm = vec2(micro(q + vec2(e, 0.)) - m0, micro(q + vec2(0., e)) - m0)/e*(0.4 + 0.6*uDetail);
+  vec3 Ns = normalize(vec3(-gs - gm, 1.));
+  vec3 Nb = normalize(vec3(-(Hxp - Hxm)/(2.*E), -(Hyp - Hym)/(2.*E), 1.));
+  float lapS = (hxp + hxm + hyp + hym - 4.*h0)/(e*e)/uScale;
+  float lapB = (Hxp + Hxm + Hyp + Hym - 4.*h0)/(E*E);
+  // only the concave bottom darkens; convex shoulders are not rimmed with light
+  float cav = clamp(lapS*0.30, 0.0, 0.40) + clamp(lapB*0.020, -0.06, 0.45);
   vec3 V = vec3(0., 0., 1.);
   vec3 albedo = lin(mix(uSkin, vec3(0.93, 0.95, 1.0), uDay*0.70));
+  albedo *= 1. + 0.06*(fbm(q*2.3 + 3.) - 0.5) + 0.04*(noise(q*8.5) - 0.5);
   float periKeep = 1.;
-  for (int e = 0; e < 2; e++) {
-    float sd = e == 0 ? -1. : 1.;
-    vec4 A = e == 0 ? uA0 : uA1;
+  for (int e2 = 0; e2 < 2; e2++) {
+    float sd = e2 == 0 ? -1. : 1.;
+    vec4 A = e2 == 0 ? uA0 : uA1;
     vec2 pp = q - vec2(sd*uSep, 0.); float xl = pp.x*sd;
     float up, lo, k, t; lidCurves(xl, A, 0., up, lo, k, t);
     float dOut = max(max(pp.y - up, lo - pp.y), 0.) + max(abs(xl) - 1., 0.)*0.8;
@@ -225,20 +321,25 @@ vec3 shadeSkin(vec2 q, float pres){
   float peri = 1. - periKeep;
   albedo *= mix(vec3(1.0), vec3(0.80, 0.78, 0.96), peri*(1. - uDay*0.4));
   vec3 sss = lin(mix(uSSS, vec3(1.0), uDay*0.55));
-  vec3 L1 = normalize(vec3(-0.38, 0.58, 0.72));
+  vec3 L1 = keyDir();
   vec3 L2 = normalize(vec3(0.60, -0.40, 0.70));
   vec3 L3 = normalize(vec3(0.97, 0.10, 0.22));
-  float d1 = dot(N, L1);
-  float wrap = clamp((d1 + 0.30)/1.30, 0., 1.);
-  vec3 col = albedo*wrap*vec3(1.0, 0.97, 0.94);
-  col += sss*albedo*pow(clamp(1. - abs(d1 - 0.1), 0., 1.), 3.)*0.55;
-  col += albedo*clamp(dot(N, L2)*0.5 + 0.5, 0., 1.)*lin(vec3(0.40, 0.52, 0.95))*0.20;
-  col += lin(vec3(0.91, 0.74, 0.33))*pow(clamp(dot(N, L3), 0., 1.), 4.)*0.08*(1. - uDay);
+  vec3 Nd = normalize(mix(Nb, Ns, 0.12));
+  float d1 = dot(Nd, L1), dB = dot(Nb, L1);
+  float wrap = clamp((d1 + 0.20)/1.20, 0., 1.);
+  vec3 col = albedo*wrap*vec3(1.0, 0.97, 0.94)*uLight.y;
+  col += sss*albedo*pow(clamp(1. - abs(dB - 0.1), 0., 1.), 3.)*0.55*uLight.y;
+  col += albedo*clamp(dot(Nb, L2)*0.5 + 0.5, 0., 1.)*lin(vec3(0.40, 0.52, 0.95))*0.20;
+  col += lin(vec3(0.91, 0.74, 0.33))*pow(clamp(dot(Nb, L3), 0., 1.), 4.)*0.10*uLight.z*(1. - uDay*0.6);
   vec3 H = normalize(L1 + V);
-  float spec = pow(clamp(dot(N, H), 0., 1.), 48.);
-  col += vec3(1.0, 0.98, 0.95)*spec*0.07;
-  col += lin(uSheen)*albedo*pow(1. - clamp(N.z, 0., 1.), 3.)*0.8;
-  col *= 1. - cavity*0.9;
+  vec3 Nsp = normalize(mix(Nb, Ns, 0.55));
+  float nh = clamp(dot(Nsp, H), 0., 1.), nhb = clamp(dot(Nb, H), 0., 1.);
+  col += vec3(1.0, 0.98, 0.95)*(pow(nh, 60.)*0.10 + pow(nhb, 14.)*0.06)*uLight.y*uGloss;
+  col += lin(uSheen)*albedo*pow(1. - clamp(Nb.z, 0., 1.), 3.)*0.8;
+  // shadow inside creases keeps the colour of light scattered in the skin
+  vec3 deep = sss/max(max(sss.r, max(sss.g, sss.b)), 1e-3);
+  col *= mix(vec3(1.), deep*0.30, clamp(cav, 0., 1.));
+  col *= 1. - 0.6*min(cav, 0.);
   col *= lashShade(q);
   col *= mix(1.35, 1.0, uDay);
   col *= mix(mix(0.03, 0.80, uDay), 1.0, pow(pres, mix(1.5, 0.8, uDay)));
@@ -258,8 +359,8 @@ vec4 eyeball(vec2 p, float side, float lpx, vec2 gz, vec4 A, float pupil, float 
   float cosI = cos(0.385); float Ri = Rb*sin(0.385);
   vec3 ro = vec3(p, 6.), rd = vec3(0, 0, -1);
   vec3 nb = normalize(vec3(p, sqrt(max(Rb*Rb - dot(p, p), 0.0001))));
-  vec3 L = normalize(vec3(-0.50, 0.62, 0.70));
-  vec3 sc = mix(lin(vec3(0.76, 0.73, 0.70)), lin(vec3(0.95, 0.93, 0.89)), day);
+  vec3 L = keyDir();
+  vec3 sc = mix(lin(vec3(0.76, 0.73, 0.70)), lin(vec3(0.95, 0.93, 0.89)), day)*uSclera;
   float corner = smoothstep(0.30, 1.0, abs(xl));
   sc = mix(sc, mix(lin(vec3(0.80, 0.66, 0.66)), lin(uSSS), 0.35), corner*0.55);
   float v = fbm(vec2(xl*7.0 + seed, p.y*11.0));
@@ -281,9 +382,9 @@ vec4 eyeball(vec2 p, float side, float lpx, vec2 gz, vec4 A, float pupil, float 
       vec3 Pi = Pc + rt*(dot(Ip - Pc, g)/dot(rt, g));
       vec3 qq = Pi - Ip;
       vec3 u = normalize(cross(vec3(0, 1, 0), g)); vec3 w = cross(g, u);
-      vec2 q2 = vec2(dot(qq, u), dot(qq, w))/Ri;
+      vec2 q2 = vec2(dot(qq, u), dot(qq, w))/(Ri*uIrisScale);
       float r = length(q2); float a = atan(q2.y, q2.x);
-      float pr = pupil*(1. + 0.012*sin(a*5. + seed));
+      float pr = clamp(pupil*uPupilMul, 0.12, 0.80)*(1. + 0.012*sin(a*5. + seed));
       float s = clamp((r - pr)/(1. - pr), 0., 1.);
       vec3 ir;
       if (uHasIris > 0.5) {
@@ -292,20 +393,25 @@ vec4 eyeball(vec2 p, float side, float lpx, vec2 gz, vec4 A, float pupil, float 
       } else {
         ir = mix(lin(vec3(0.93, 0.70, 0.30)), lin(vec3(0.62, 0.34, 0.10)), smoothstep(0.1, 0.7, s))*(0.5 + fbm(vec2(a*10., s*3.)));
       }
+      vec3 tint = lin(uIrisTint);
+      vec3 recol = tint*(luma(ir)/max(luma(tint), 0.02))*0.95;
+      ir = mix(ir, recol, uIrisTintAmt);
       ir *= 0.60 + 0.80*smoothstep(1.0, 0.1, length(q2 - vec2(0.38, -0.42)));
       ir *= mix(1., 0.30, smoothstep(0.84, 1.0, s));
+      vec3 glowCol = mix(lin(vec3(0.95, 0.78, 0.40)), tint*1.2, uIrisTintAmt*0.6);
       if (uOptics > 0.5) {
         float blades = smoothstep(0.035, 0.0, abs(fract(a*12./(2.*PI) + s*0.9) - 0.5) - 0.44)*smoothstep(0.05, 0.25, s)*smoothstep(0.75, 0.5, s);
         ir *= 1. - 0.22*blades;
-        ir += lin(vec3(0.95, 0.78, 0.40))*smoothstep(0.03, 0.0, abs(s - 0.06))*0.55;
-        ir += lin(vec3(0.95, 0.78, 0.40))*smoothstep(0.02, 0.0, abs(s - 0.80))*0.18;
+        ir += glowCol*smoothstep(0.03, 0.0, abs(s - 0.06))*(0.25 + 0.9*uGlow);
+        ir += glowCol*smoothstep(0.02, 0.0, abs(s - 0.80))*(0.08 + 0.3*uGlow);
       }
       ir = mix(vec3(0.0015), ir, smoothstep(pr - 0.012, pr + 0.012, r));
+      if (uOptics > 0.5) ir += glowCol*uGlow*0.35*smoothstep(pr, pr*0.2, r)*smoothstep(pr*0.0, pr*0.9, r);
       ir *= 0.55 + 0.6*clamp(dot(nc, L)*0.5 + 0.5, 0., 1.);
       vec3 under = mix(ir, scl*0.55, smoothstep(0.985, 1.03, r));
       float F = 0.025 + 0.975*pow(1. - max(dot(-rd, nc), 0.), 5.);
       vec3 rc = reflect(rd, nc);
-      ccol = under*(1. - F) + F*env(rc, day) + pow(max(dot(rc, L), 0.), 1400.)*60.*vec3(1., .97, .9);
+      ccol = under*(1. - F) + F*env(rc, day) + pow(max(dot(rc, L), 0.), 1400.)*60.*uCatch*vec3(1., .97, .9);
     }
   }
   vec3 ball = mix(surf, ccol, cm);
@@ -313,7 +419,7 @@ vec4 eyeball(vec2 p, float side, float lpx, vec2 gz, vec4 A, float pupil, float 
   ao *= mix(0.50, 1.0, smoothstep(1.0, 0.55, abs(xl)));
   ball *= ao;
   float men = smoothstep(0.03, 0.010, dL)*smoothstep(0.0, 0.006, dL)*k;
-  ball += lin(vec3(0.95, 0.93, 0.90))*men*mix(0.10, 0.18, day)*(0.6 + 0.4*sin(xl*9. + seed));
+  ball += lin(vec3(0.95, 0.93, 0.90))*men*mix(0.10, 0.18, day)*(0.6 + 0.4*sin(xl*9. + seed))*min(uCatch, 1.5);
   float car = smoothstep(0.09, 0.015, length((vec2(xl, p.y) - vec2(-0.93, -0.135))*vec2(1.0, 1.5)));
   ball = mix(ball, lin(uLidInner)*(0.35 + 0.35*diff), car*0.6);
   return vec4(ball*inside, inside);
@@ -329,17 +435,17 @@ vec4 lowerMargin(vec2 p, float side, vec4 A, float gy){
   return vec4(c*m, m);
 }
 
-// ---------------- lashes: individual curved lashes rooted on the lid margin ----------------
+// ---------------- lashes ----------------
 vec4 upperLashes(vec2 p, float side, vec4 A, float gy, float seed){
   float xl = p.x*side;
   float up, lo, k, t; lidCurves(xl, A, gy, up, lo, k, t);
-  if (p.y < up - 0.07 || p.y > up + 0.50 || abs(xl) > 1.55) return vec4(0.);
+  if (p.y < up - 0.07 || p.y > up + 0.52*uLash.x || abs(xl) > 1.6) return vec4(0.);
   vec2 P = vec2(xl, p.y);
   float aa = 0.85/uScale;
   float cov = 0.;
   for (int layer = 0; layer < 3; layer++) {
     float fl = float(layer);
-    float N = layer == 0 ? 34. : (layer == 1 ? 30. : 42.);
+    float N = floor((layer == 0 ? 34. : (layer == 1 ? 30. : 42.))*uLash.y);
     float lenK = layer == 0 ? 1.0 : (layer == 1 ? 0.78 : 0.42);
     float idx = (xl + 0.94)/1.92*N;
     for (int j = -9; j <= 2; j++) {
@@ -352,8 +458,8 @@ vec4 upperLashes(vec2 p, float side, vec4 A, float gy, float seed){
       float lat = smoothstep(-0.75, 1.0, xr);
       float clumpA = (hash21(vec2(floor(i/4.), seed + fl*3.)) - 0.5)*0.45;
       float ang = mix(1.62, 0.52, pow(lat, 0.9)) + (h2 - 0.5)*0.28 - A.y*1.3;
-      float len = mix(0.13, 0.40, smoothstep(-0.9, 0.6, xr))*mix(0.60, 1.10, h2)*(0.55 + 0.45*kr)*lenK;
-      float curl = mix(0.25, 1.05, lat)*mix(0.55, 1.0, h) + 0.10;
+      float len = mix(0.13, 0.40, smoothstep(-0.9, 0.6, xr))*mix(0.60, 1.10, h2)*(0.55 + 0.45*kr)*lenK*uLash.x;
+      float curl = (mix(0.25, 1.05, lat)*mix(0.55, 1.0, h) + 0.10)*uLash.z;
       vec2 prev = vec2(xr, ur - 0.008);
       float best = 1e3, bt = 0.;
       for (int sg = 1; sg <= 5; sg++) {
@@ -373,7 +479,7 @@ vec4 upperLashes(vec2 p, float side, vec4 A, float gy, float seed){
   }
   float edge = smoothstep(1.06, 0.84, abs(xl));
   float line = smoothstep(0.032 + 0.012*k, 0.008, abs(p.y - up - 0.010))*edge;
-  float mass = smoothstep(0.085, 0.0, p.y - up)*step(up - 0.01, p.y)*edge*0.55*k;
+  float mass = smoothstep(0.085, 0.0, p.y - up)*step(up - 0.01, p.y)*edge*0.55*k*min(uLash.y, 1.2);
   float a = clamp(max(max(cov*edge, line), mass), 0., 1.);
   vec3 ink = lin(mix(uBrowCol, vec3(0.005, 0.006, 0.016), 0.65));
   return vec4(ink*a, a);
@@ -381,9 +487,9 @@ vec4 upperLashes(vec2 p, float side, vec4 A, float gy, float seed){
 vec4 lowerLashes(vec2 p, float side, vec4 A, float gy, float seed){
   float xl = p.x*side;
   float up, lo, k, t; lidCurves(xl, A, gy, up, lo, k, t);
-  if (p.y > lo + 0.02 || p.y < lo - 0.16 || xl < -0.7 || xl > 1.2) return vec4(0.);
+  if (p.y > lo + 0.02 || p.y < lo - 0.18 || xl < -0.7 || xl > 1.2) return vec4(0.);
   vec2 P = vec2(xl, p.y);
-  float N = 26.;
+  float N = floor(26.*uLash.y);
   float idx = (xl + 0.55)/1.5*N;
   float cov = 0.;
   float aa = 0.85/uScale;
@@ -395,7 +501,7 @@ vec4 lowerLashes(vec2 p, float side, vec4 A, float gy, float seed){
     float ur, lr, kr, tr; lidCurves(xr, A, gy, ur, lr, kr, tr);
     float lat = smoothstep(-0.5, 1.0, xr);
     float ang = -1.45 + 0.75*lat + 0.2*(h - 0.5);
-    float len = mix(0.045, 0.10, lat)*mix(0.7, 1.1, h)*kr;
+    float len = mix(0.045, 0.10, lat)*mix(0.7, 1.1, h)*kr*uLash.x;
     vec2 R = vec2(xr, lr - 0.03);
     vec2 E = R + vec2(cos(ang), sin(ang))*len;
     vec2 pa = P - R, ba = E - R;
@@ -409,36 +515,52 @@ vec4 lowerLashes(vec2 p, float side, vec4 A, float gy, float seed){
   return vec4(ink*a, a);
 }
 
-// ---------------- brows: hundreds of individual hairs ----------------
+// ---------------- brows: a soft streaked mass of fine hairs, long single hairs on top ----------------
 vec4 brow(vec2 p, float side, vec4 B){
   float xl = p.x*side;
   float s = browS(xl, B);
   if (s < -0.18 || s > 1.14) return vec4(0.);
-  float yc = browC(s, B);
-  if (abs(p.y - yc) > browTh(s)*0.5 + 0.26) return vec4(0.);
+  float yc = browC(s, B), thS = browTh(s);
+  if (abs(p.y - yc) > thS*0.5 + 0.30) return vec4(0.);
   vec2 P = vec2(xl, p.y);
-  float cs = 0.040;
+  float str = clamp(uBrowLook.z, 0., 2.);
+  float dens = uBrowLook.y;
+  vec3 base = lin(mix(uBrowCol, uSkin*0.55, uDay*0.25));
+  vec3 L = keyDir();
+  float dnS = (p.y - yc)/(thS*0.5);
+  float mask = smoothstep(1.15, 0.25, abs(dnS + 0.06))*smoothstep(-0.12, 0.22, s)*smoothstep(1.05, 0.72, s);
+  float tone = 0.;
+  if (mask > 0.002) {
+    float a0 = browAngle(s, clamp(dnS, -1., 1.), B);
+    vec2 dir = vec2(cos(a0), sin(a0));
+    float st = 0.;
+    for (int k = -3; k <= 3; k++) st += noise((P + dir*float(k)*0.016)*70. + side*9.);
+    st = smoothstep(0.30, 0.70, st/7.);
+    tone = mask*(0.34 + 0.46*st)*min(dens, 1.6)*(0.45 + 0.55*min(str, 1.5));
+  }
+  float cs = 0.034;
   vec2 cell = floor(P/cs);
   float cov = 0.; vec3 acc = vec3(0.);
-  float aa = 0.9/uScale;
-  vec3 base = lin(mix(uBrowCol*0.7, uSkin*0.55, uDay*0.30));
-  for (int dy = -5; dy <= 1; dy++) {
-    for (int dx = -6; dx <= 1; dx++) {
+  float aa = 0.8/uScale;
+  for (int dy = -6; dy <= 2; dy++) {
+    for (int dx = -11; dx <= 2; dx++) {
       vec2 c = cell + vec2(float(dx), float(dy));
       vec2 hr = hash22(c + side*17.3);
       vec2 R = (c + hr)*cs;
+      vec2 PR = P - R;
+      if (dot(PR, PR) > 0.13) continue;
       float sr = browS(R.x, B);
-      if (sr < -0.05 || sr > 1.03) continue;
+      if (sr < -0.06 || sr > 1.03) continue;
       float ycr = browC(sr, B), thr = browTh(sr);
       float dn = (R.y - ycr)/(thr*0.5);
-      if (abs(dn) > 1.0) continue;
-      float dens = smoothstep(1.0, 0.55, abs(dn))*smoothstep(-0.05, 0.10, sr)*smoothstep(1.03, 0.85, sr);
-      float h3 = hash21(c*1.37 + side);
-      if (h3 > 0.50 + 0.50*dens) continue;
-      float ang = browAngle(sr, dn, B) + (hr.x - 0.5)*0.30;
-      float len = mix(0.15, 0.26, hr.y)*mix(1.0, 0.62, clamp(sr, 0., 1.))*mix(0.7, 1.0, dens);
-      float bend = (hash21(c + 5.1) - 0.5)*0.5 - 0.18;
-      vec2 prev = R; float best = 1e3, bt = 0.;
+      if (abs(dn) > 1.05) continue;
+      float df = smoothstep(1.05, 0.45, abs(dn))*smoothstep(-0.06, 0.22, sr)*smoothstep(1.03, 0.85, sr);
+      if (hash21(c*1.37 + side) > (0.28 + 0.62*df)*dens) continue;
+      float h4 = hash21(c + 3.3), h5 = hash21(c + 5.1);
+      float ang = browAngle(sr, dn, B) + (hr.x - 0.5)*0.36;
+      float len = mix(0.16, 0.34, hr.y)*mix(1.0, 0.62, clamp(sr, 0., 1.))*mix(0.55, 1.0, smoothstep(0.0, 0.25, sr))*mix(0.75, 1.0, df);
+      float bend = (h5 - 0.5)*0.6 - 0.22;
+      vec2 prev = R; float best = 1e3, bt = 0.; float segA = ang;
       for (int k = 1; k <= 3; k++) {
         float fk = float(k);
         float a = ang + bend*(fk/3.);
@@ -446,18 +568,24 @@ vec4 brow(vec2 p, float side, vec4 B){
         vec2 pa = P - prev, ba = nxt - prev;
         float hs = clamp(dot(pa, ba)/dot(ba, ba), 0., 1.);
         float d = length(pa - ba*hs);
-        if (d < best) { best = d; bt = (fk - 1. + hs)/3.; }
+        if (d < best) { best = d; bt = (fk - 1. + hs)/3.; segA = a; }
         prev = nxt;
       }
-      float w = mix(0.0080, 0.0018, bt);
-      float cv = smoothstep(w + aa, max(w - aa, 0.), best)*(1. - smoothstep(0.85, 1.0, bt))*0.95;
-      vec3 hc = base*mix(0.65, 1.25, hash21(c + 9.7))*mix(0.8, 1.15, bt);
+      float w = mix(0.0052, 0.0010, bt)*mix(0.8, 1.2, h4);
+      float wEff = max(w, aa*0.7);
+      float cv = smoothstep(wEff + aa*0.5, wEff - aa*0.5, best)*min(1., w/wEff*1.3)*(1. - smoothstep(0.78, 1.0, bt));
+      cv *= mix(0.50, 0.95, h4)*min(1., 0.30 + 0.70*str);
+      float sheen = pow(1. - abs(dot(vec2(cos(segA), sin(segA)), normalize(L.xy))), 6.);
+      vec3 hc = base*mix(0.65, 1.55, hash21(c + 9.7))*mix(0.9, 1.25, bt) + lin(uSheen)*0.06*sheen*mix(0.6, 1.0, uDay);
+      hc *= mix(1.40, 0.60, clamp(str*0.5, 0., 1.));
       acc = acc*(1. - cv) + hc*cv;
       cov = cov + cv*(1. - cov);
     }
   }
-  acc += lin(uSheen)*0.03*cov;
-  return vec4(acc, cov);
+  vec3 toneCol = base*mix(1.30, 0.70, clamp(str*0.5, 0., 1.));
+  vec3 col = acc + toneCol*tone*(1. - cov);
+  float a = cov + tone*(1. - cov);
+  return vec4(col, a);
 }
 
 void main(){
@@ -473,7 +601,7 @@ void main(){
   float seed = leftSide ? 1.3 : 5.0;
 
   float pres = presence(q);
-  float vis = clamp(max(pres*uPresence, expressionReveal(q)), 0., 1.);
+  float vis = clamp(1. - (1. - pres*uPresence)*(1. - expressionReveal(q)), 0., 1.);
   vec3 col = vec3(0.); float alpha = 0.;
   if (vis > 0.004) { col = shadeSkin(q, pres)*vis; alpha = vis; }
   vec4 m = lowerMargin(p, side, A, gz.y);
@@ -502,10 +630,10 @@ void main(){
   // C = glabella lines, nasal root lines, forehead lines, under-eye crease.
   var PRESETS = {
     calm:      { A: [0.86, 0, 0.06, 0.00], B: [0.00, 0.00, 0.00, 0.00], C: [0.00, 0.00, 0.00, 0.10], pupil: 0.36 },
-    attention: { A: [1.00, 0, 0.00, 0.00], B: [0.28, 0.30, 0.00, 0.00], C: [0.00, 0.00, 0.25, 0.00], pupil: 0.42 },
+    attention: { A: [1.00, 0, 0.00, 0.00], B: [0.28, 0.30, 0.00, 0.00], C: [0.00, 0.00, 0.30, 0.00], pupil: 0.42 },
     joy:       { A: [0.72, 0, 0.80, 1.00], B: [0.12, 0.00, 0.14, 0.00], C: [0.00, 0.00, 0.00, 0.80], pupil: 0.40 },
-    surprise:  { A: [1.20, 0, 0.00, 0.00], B: [0.95, 0.90, 0.00, 0.00], C: [0.00, 0.00, 0.95, 0.00], pupil: 0.44 },
-    empathy:   { A: [0.80, 0, 0.10, 0.00], B: [0.90, -0.30, 0.00, 0.40], C: [0.40, 0.00, 0.55, 0.25], pupil: 0.41, gy: -0.12 },
+    surprise:  { A: [1.20, 0, 0.00, 0.00], B: [0.95, 0.90, 0.00, 0.00], C: [0.00, 0.00, 1.00, 0.00], pupil: 0.44 },
+    empathy:   { A: [0.80, 0, 0.10, 0.00], B: [0.90, -0.30, 0.00, 0.40], C: [0.40, 0.00, 0.60, 0.25], pupil: 0.41, gy: -0.12 },
     thinking:  { A: [0.78, 0, 0.35, 0.18], B: [0.00, 0.10, 0.45, 0.65], C: [0.80, 0.10, 0.00, 0.20], pupil: 0.33, gx: -0.35, gy: 0.30 },
     strict:    { A: [1.02, 0, 0.45, 0.12], B: [0.00, 0.00, 0.95, 0.95], C: [1.00, 0.70, 0.00, 0.30], pupil: 0.30 },
     doubt:     { A: [0.84, 0, 0.32, 0.22], B: [0.00, 0.00, 0.32, 0.25], C: [0.35, 0.00, 0.20, 0.15], pupil: 0.34,
@@ -513,15 +641,39 @@ void main(){
     tenderness:{ A: [0.70, 0, 0.50, 0.50], B: [0.28, 0.00, 0.00, 0.00], C: [0.00, 0.00, 0.00, 0.45], pupil: 0.47 },
     sleepy:    { A: [0.42, 0, 0.10, 0.00], B: [0.00, 0.00, 0.10, 0.00], C: [0.00, 0.00, 0.00, 0.35], pupil: 0.38, gy: -0.10 }
   };
-  var SKINS = {
-    night:  { skin: [0.15, 0.20, 0.40], sss: [0.36, 0.52, 0.95], sheen: [0.55, 0.66, 1.00], brow: [0.020, 0.024, 0.070], inner: [0.52, 0.38, 0.58] },
-    violet: { skin: [0.25, 0.20, 0.44], sss: [0.62, 0.46, 0.95], sheen: [0.78, 0.66, 1.00], brow: [0.045, 0.025, 0.080], inner: [0.62, 0.38, 0.58] },
-    indigo: { skin: [0.18, 0.18, 0.38], sss: [0.46, 0.42, 0.92], sheen: [0.64, 0.62, 1.00], brow: [0.025, 0.022, 0.065], inner: [0.56, 0.36, 0.58] },
-    cobalt: { skin: [0.11, 0.24, 0.46], sss: [0.28, 0.62, 0.96], sheen: [0.50, 0.80, 1.00], brow: [0.015, 0.035, 0.080], inner: [0.48, 0.42, 0.64] },
-    moon:   { skin: [0.40, 0.45, 0.60], sss: [0.70, 0.78, 0.98], sheen: [0.85, 0.90, 1.00], brow: [0.10, 0.11, 0.19], inner: [0.70, 0.50, 0.64] }
+  var SKIN_PRESETS = { night: '#26335f', violet: '#403370', indigo: '#2e2d61', cobalt: '#1c3e76', moon: '#6b7597' };
+
+  var DEFAULTS = {
+    emotion: 'calm', intensity: 1,
+    skin: SKIN_PRESETS.night, presence: 1, bg: 'night',
+    follow: true, blinking: true,
+    zoom: 1, sep: 2.0, eyeOpen: 1, tilt: 0,
+    browHeight: 0, browArch: 1, browTilt: 0, browLength: 0, browThick: 1.1, browDensity: 1, browStrength: 1, browMotion: 1, browColor: '#0b0d20',
+    irisColor: '#c98a2e', irisTint: 0, irisSize: 1, pupil: 1, optics: false, glow: 0.5, sclera: 1, catchlight: 1,
+    lashLen: 1, lashDensity: 1, lashCurl: 1,
+    wrinkles: 1, detail: 1, gloss: 1,
+    lightAngle: 0, light: 1, rim: 1
   };
 
+  function hexToRgb(hex) { var h = String(hex || '').replace('#', ''); if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+    var n = parseInt(h, 16); if (!isFinite(n)) return [0, 0, 0]; return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; }
+  function rgbToHsl(c) { var r = c[0], g = c[1], b = c[2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, h = 0, s = 0;
+    if (mx !== mn) { var d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; }
+    return [h, s, l]; }
+  function hslToRgb(h, s, l) { if (s === 0) return [l, l, l];
+    function f(p, q, t) { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; }
+    var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q; return [f(p, q, h + 1 / 3), f(p, q, h), f(p, q, h - 1 / 3)]; }
+  function skinSet(hex) {
+    var rgb = hexToRgb(hex), hsl = rgbToHsl(rgb);
+    var sss = hslToRgb(hsl[0], Math.min(1, hsl[1] * 1.15 + 0.1), Math.min(0.78, Math.max(0.55, hsl[2] * 1.6 + 0.3)));
+    var sheen = hslToRgb(hsl[0], hsl[1] * 0.55, 0.86);
+    var inner = [0, 1, 2].map(function (i) { return rgb[i] * 0.35 + [0.62, 0.38, 0.58][i] * 0.65; });
+    return { skin: rgb, sss: sss, sheen: sheen, inner: inner };
+  }
+
   function create(canvas, opts) {
+    opts = opts || {};
     var gl = canvas.getContext('webgl2', { premultipliedAlpha: true, antialias: false, alpha: true });
     if (!gl) return null;
     function compile(type, src) { var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
@@ -533,7 +685,9 @@ void main(){
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
     var loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
     var U = {};
-    ['uRes', 'uMid', 'uScale', 'uSep', 'uGaze', 'uA0', 'uA1', 'uB0', 'uB1', 'uC', 'uPupil', 'uSkin', 'uSSS', 'uSheen', 'uBrowCol', 'uLidInner', 'uDay', 'uOptics', 'uHasIris', 'uPresence', 'uIris']
+    ['uRes', 'uMid', 'uScale', 'uSep', 'uGaze', 'uA0', 'uA1', 'uB0', 'uB1', 'uC', 'uPupil', 'uSkin', 'uSSS', 'uSheen', 'uBrowCol', 'uLidInner', 'uIrisTint',
+     'uDay', 'uOptics', 'uGlow', 'uHasIris', 'uPresence', 'uBrow', 'uBrowLook', 'uOpenMul', 'uTilt', 'uIrisScale', 'uPupilMul', 'uIrisTintAmt',
+     'uSclera', 'uCatch', 'uLash', 'uSkinLook', 'uLight', 'uIris']
       .forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
     var hasIris = 0;
     var img = new Image();
@@ -543,34 +697,53 @@ void main(){
       gl.generateMipmap(gl.TEXTURE_2D);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      hasIris = 1; kick();
+      hasIris = 1; dirty = true; kick();
     };
     img.src = opts.iris || 'iris.jpg';
 
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var cur = { A0: PRESETS.calm.A.slice(), A1: PRESETS.calm.A.slice(), B0: PRESETS.calm.B.slice(), B1: PRESETS.calm.B.slice(), C: PRESETS.calm.C.slice(), pupil: 0.36 };
+    var cfg = Object.assign({}, DEFAULTS);
+    var skin = skinSet(cfg.skin);
+    var calm = PRESETS.calm;
+    var cur = { A0: calm.A.slice(), A1: calm.A.slice(), B0: calm.B.slice(), B1: calm.B.slice(), C: calm.C.slice(), pupil: calm.pupil };
     var tgt = JSON.parse(JSON.stringify(cur));
     var st = { gx: 0, gy: 0, tx: 0, ty: 0, egx: 0, egy: 0, blink: 0, blinkStart: -1, nextBlink: performance.now() + 1500, double: false,
-      lastPointer: -1e9, nextGlance: 0, skin: SKINS.night, day: 0, optics: 0, presence: 1, frozen: false, emotion: 'calm', blinkSlow: false };
+      lastPointer: -1e9, nextGlance: 0, frozen: false, blinkSlow: false };
 
-    function setEmotion(name) {
-      var p = PRESETS[name]; if (!p) return;
-      st.emotion = name;
-      tgt.A0 = p.A.slice(); tgt.A1 = (p.right ? p.right.A : p.A).slice();
-      tgt.B0 = p.B.slice(); tgt.B1 = (p.right ? p.right.B : p.B).slice();
-      tgt.C = p.C.slice(); tgt.pupil = p.pupil;
-      st.egx = p.gx || 0; st.egy = p.gy || 0;
-      st.blinkSlow = name === 'sleepy';
-      if (st.blinkStart < 0 && !reduce) st.nextBlink = Math.min(st.nextBlink, performance.now() + 380);
+    function mixArr(a, b, k) { return a.map(function (v, i) { return v + (b[i] - v) * k; }); }
+    function applyEmotion() {
+      var p = PRESETS[cfg.emotion] || calm, k = cfg.intensity;
+      tgt.A0 = mixArr(calm.A, p.A, k); tgt.A1 = mixArr(calm.A, p.right ? p.right.A : p.A, k);
+      tgt.B0 = mixArr(calm.B, p.B, k); tgt.B1 = mixArr(calm.B, p.right ? p.right.B : p.B, k);
+      tgt.C = mixArr(calm.C, p.C, k).map(function (v) { return Math.max(0, v); });
+      tgt.A0 = tgt.A0.map(function (v, i) { return i === 0 ? v : Math.max(0, v); }); tgt.A1 = tgt.A1.map(function (v, i) { return i === 0 ? v : Math.max(0, v); });
+      tgt.pupil = calm.pupil + (p.pupil - calm.pupil) * k;
+      st.egx = (p.gx || 0) * k; st.egy = (p.gy || 0) * k;
+      st.blinkSlow = cfg.emotion === 'sleepy';
       kick();
+    }
+    function setConfig(part) {
+      part = part || {};
+      var prevEmotion = cfg.emotion;
+      Object.keys(part).forEach(function (key) { if (key in DEFAULTS) cfg[key] = part[key]; });
+      skin = skinSet(cfg.skin);
+      if ('emotion' in part || 'intensity' in part) {
+        applyEmotion();
+        if (part.emotion && part.emotion !== prevEmotion && st.blinkStart < 0 && !reduce && cfg.blinking) st.nextBlink = Math.min(st.nextBlink, performance.now() + 380);
+      }
+      if ('follow' in part && !cfg.follow) { st.tx = 0; st.ty = 0; }
+      dirty = true;
+      if (st.frozen) draw(); else kick();
     }
     function layout() {
       var w = canvas.width, h = canvas.height;
       var phone = canvas.clientWidth < 600;
-      var scale = Math.min(h / 3.45, w / (phone ? 6.6 : 7.6));
-      return { w: w, h: h, scale: scale, midX: w / 2, midY: h * 0.72 };
+      var scale = Math.min(h / 3.45, w / (phone ? 7.2 : 7.2) * 2.0 / Math.max(cfg.sep, 1.6)) * cfg.zoom;
+      // the face (cheeks to forehead) sits in the middle of the frame, eyes slightly below centre
+      return { w: w, h: h, scale: scale, midX: w / 2, midY: Math.min(h * 0.80, h / 2 + 0.65 * scale) };
     }
     function aim(x, y) {
+      if (!cfg.follow) return;
       var r = canvas.getBoundingClientRect();
       var dx = (x - (r.left + r.width / 2)) / (r.height * 1.4), dy = -(y - (r.top + r.height * 0.72)) / (r.height * 1.4);
       var m = Math.hypot(dx, dy), lim = 0.9;
@@ -595,18 +768,21 @@ void main(){
       approach(cur.B0, tgt.B0, kBrow); approach(cur.B1, tgt.B1, kBrow);
       approach(cur.C, tgt.C, kWr);
       cur.pupil += (tgt.pupil - cur.pupil) * (1 - Math.exp(-dt / 500));
-      var idle = now - st.lastPointer > 2600;
-      if (!reduce && idle && now > st.nextGlance) {
-        var back = Math.random() < 0.5;
-        st.tx = back ? 0 : (Math.random() - 0.5) * 0.8; st.ty = back ? 0 : (Math.random() - 0.5) * 0.4;
-        st.nextGlance = now + 1300 + Math.random() * 2400;
-      }
+      if (cfg.follow) {
+        var idle = now - st.lastPointer > 2600;
+        if (!reduce && idle && now > st.nextGlance) {
+          var back = Math.random() < 0.5;
+          st.tx = back ? 0 : (Math.random() - 0.5) * 0.8; st.ty = back ? 0 : (Math.random() - 0.5) * 0.4;
+          st.nextGlance = now + 1300 + Math.random() * 2400;
+        }
+      } else { st.tx = 0; st.ty = 0; }
       var tx = st.tx + st.egx, ty = st.ty + st.egy;
       var dist = Math.hypot(tx - st.gx, ty - st.gy);
       var k = 1 - Math.exp(-dt / (reduce ? 260 : (dist > 0.12 ? 28 : 140)));
       st.gx += (tx - st.gx) * k; st.gy += (ty - st.gy) * k;
-      if (reduce) { st.blink = 0; return; }
-      if (st.blinkStart < 0 && now > st.nextBlink) st.blinkStart = now;
+      if (!isFinite(st.gx) || !isFinite(st.gy)) { st.gx = tx; st.gy = ty; }
+      if (reduce || (!cfg.blinking && st.blinkStart < 0)) { st.blink = 0; return; }
+      if (cfg.blinking && st.blinkStart < 0 && now > st.nextBlink) st.blinkStart = now;
       if (st.blinkStart >= 0) {
         var b = blinkCurve(now - st.blinkStart, st.blinkSlow);
         if (b < 0) {
@@ -616,12 +792,15 @@ void main(){
         } else st.blink = b;
       }
     }
+    // Pixel budget: large monitors render at a slightly lower density instead of stalling.
     function resize() {
-      var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      var w = Math.max(1, Math.round(canvas.clientWidth * dpr)), h = Math.max(1, Math.round(canvas.clientHeight * dpr));
-      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      var cw = Math.max(1, canvas.clientWidth), ch = Math.max(1, canvas.clientHeight);
+      var dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(2.4e6 / (cw * ch)));
+      var w = Math.max(1, Math.round(cw * dpr)), h = Math.max(1, Math.round(ch * dpr));
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; dirty = true; }
       gl.viewport(0, 0, w, h);
     }
+    function scaled(arr, k) { return arr.map(function (v) { return v * k; }); }
     function draw() {
       resize();
       var f = layout();
@@ -629,48 +808,75 @@ void main(){
       gl.uniform2f(U.uRes, f.w, f.h);
       gl.uniform2f(U.uMid, f.midX, f.midY);
       gl.uniform1f(U.uScale, f.scale);
-      gl.uniform1f(U.uSep, 2.0);
+      gl.uniform1f(U.uSep, cfg.sep);
       gl.uniform4f(U.uGaze, st.gx + conv, st.gy, st.gx - conv, st.gy);
       var a0 = cur.A0.slice(), a1 = cur.A1.slice(); a0[1] = st.blink; a1[1] = st.blink;
       gl.uniform4fv(U.uA0, a0); gl.uniform4fv(U.uA1, a1);
-      gl.uniform4fv(U.uB0, cur.B0); gl.uniform4fv(U.uB1, cur.B1);
+      gl.uniform4fv(U.uB0, scaled(cur.B0, cfg.browMotion)); gl.uniform4fv(U.uB1, scaled(cur.B1, cfg.browMotion));
       gl.uniform4fv(U.uC, cur.C);
       gl.uniform2f(U.uPupil, cur.pupil, cur.pupil);
-      gl.uniform3fv(U.uSkin, st.skin.skin); gl.uniform3fv(U.uSSS, st.skin.sss); gl.uniform3fv(U.uSheen, st.skin.sheen);
-      gl.uniform3fv(U.uBrowCol, st.skin.brow); gl.uniform3fv(U.uLidInner, st.skin.inner);
-      gl.uniform1f(U.uDay, st.day); gl.uniform1f(U.uOptics, st.optics); gl.uniform1f(U.uPresence, st.presence);
+      gl.uniform3fv(U.uSkin, skin.skin); gl.uniform3fv(U.uSSS, skin.sss); gl.uniform3fv(U.uSheen, skin.sheen);
+      gl.uniform3fv(U.uBrowCol, hexToRgb(cfg.browColor)); gl.uniform3fv(U.uLidInner, skin.inner);
+      gl.uniform3fv(U.uIrisTint, hexToRgb(cfg.irisColor)); gl.uniform1f(U.uIrisTintAmt, cfg.irisTint);
+      gl.uniform1f(U.uDay, cfg.bg === 'day' ? 1 : 0); gl.uniform1f(U.uOptics, cfg.optics ? 1 : 0); gl.uniform1f(U.uGlow, cfg.glow);
+      gl.uniform1f(U.uPresence, cfg.presence);
+      gl.uniform4f(U.uBrow, cfg.browHeight, cfg.browArch, cfg.browTilt, cfg.browLength);
+      gl.uniform3f(U.uBrowLook, cfg.browThick, cfg.browDensity, cfg.browStrength);
+      gl.uniform1f(U.uOpenMul, cfg.eyeOpen); gl.uniform1f(U.uTilt, cfg.tilt);
+      gl.uniform1f(U.uIrisScale, cfg.irisSize); gl.uniform1f(U.uPupilMul, cfg.pupil);
+      gl.uniform1f(U.uSclera, cfg.sclera); gl.uniform1f(U.uCatch, cfg.catchlight);
+      gl.uniform3f(U.uLash, cfg.lashLen, cfg.lashDensity, cfg.lashCurl);
+      gl.uniform3f(U.uSkinLook, cfg.wrinkles, cfg.detail, cfg.gloss);
+      gl.uniform3f(U.uLight, cfg.lightAngle * Math.PI / 180, cfg.light, cfg.rim);
       gl.uniform1f(U.uHasIris, hasIris); gl.uniform1i(U.uIris, 0);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
-    var raf = 0, last = performance.now(), visible = true;
+    // Frames are drawn only when something on screen changed.
+    var raf = 0, last = performance.now(), visible = true, dirty = true, lastSig = '';
+    function signature() {
+      var v = [st.gx, st.gy, st.blink, cur.pupil].concat(cur.A0, cur.A1, cur.B0, cur.B1, cur.C);
+      for (var i = 0; i < v.length; i++) v[i] = Math.round(v[i] * 4000);
+      return v.join(',');
+    }
     function loop(now) {
       raf = 0;
-      var dt = Math.min(64, now - last); last = now;
-      step(now, dt); draw();
-      if (visible && !document.hidden) raf = requestAnimationFrame(loop);
+      // rAF timestamps can precede the moment the loop was started: never step backwards in time
+      var dt = Math.max(0, Math.min(64, now - last)); last = Math.max(last, now);
+      step(now, dt);
+      var sig = signature();
+      resize();
+      if (dirty || sig !== lastSig) {
+        dirty = false; lastSig = sig; draw();
+      }
+      if (visible && !document.hidden && !st.frozen) raf = requestAnimationFrame(loop);
     }
-    function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(loop); } }
+    function kick() { if (!raf && !st.frozen) { last = performance.now() - 16; raf = requestAnimationFrame(loop); } }
     new IntersectionObserver(function (en) { visible = en[0].isIntersecting; if (visible) kick(); }).observe(canvas);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) kick(); });
+    applyEmotion();
     kick();
 
     return {
-      setEmotion: setEmotion,
-      setSkin: function (name) { if (SKINS[name]) { st.skin = SKINS[name]; kick(); } },
-      setDay: function (v) { st.day = v ? 1 : 0; kick(); },
-      setOptics: function (v) { st.optics = v ? 1 : 0; kick(); },
-      setPresence: function (v) { st.presence = v; kick(); },
+      setConfig: setConfig,
+      getConfig: function () { return Object.assign({}, cfg); },
       blink: function () { if (st.blinkStart < 0) st.blinkStart = performance.now(); kick(); },
-      emotions: Object.keys(PRESETS),
+      // A PNG of the current frame on the given background colour.
+      snapshot: function (bgColor) {
+        draw();
+        var out = document.createElement('canvas'); out.width = canvas.width; out.height = canvas.height;
+        var cx = out.getContext('2d'); cx.fillStyle = bgColor || '#0b1230'; cx.fillRect(0, 0, out.width, out.height);
+        cx.drawImage(canvas, 0, 0);
+        return out.toDataURL('image/png');
+      },
       // Deterministic still frames for automated review.
-      pose: function (name, gx, gy, blink) {
-        setEmotion(name);
+      pose: function (gx, gy, blink) {
         cur = JSON.parse(JSON.stringify(tgt));
         st.frozen = true; st.gx = gx || 0; st.gy = gy || 0; st.blink = blink || 0; draw();
       },
-      ready: function () { return hasIris === 1; }
+      ready: function () { return hasIris === 1; },
+      debugState: function () { return JSON.parse(JSON.stringify({ st: st, cur: cur })); }
     };
   }
-  window.VijuEyeLab = { create: create, PRESETS: PRESETS, SKINS: SKINS };
+  window.VijuEyeLab = { create: create, PRESETS: PRESETS, SKIN_PRESETS: SKIN_PRESETS, DEFAULTS: DEFAULTS };
 })();
