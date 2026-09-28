@@ -795,7 +795,7 @@ void main(){
     // Pixel budget: large monitors render at a slightly lower density instead of stalling.
     function resize() {
       var cw = Math.max(1, canvas.clientWidth), ch = Math.max(1, canvas.clientHeight);
-      var dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(2.4e6 / (cw * ch)));
+      var dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(budget / (cw * ch)));
       var w = Math.max(1, Math.round(cw * dpr)), h = Math.max(1, Math.round(ch * dpr));
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; dirty = true; }
       gl.viewport(0, 0, w, h);
@@ -834,6 +834,8 @@ void main(){
     }
     // Frames are drawn only when something on screen changed.
     var raf = 0, last = performance.now(), visible = true, dirty = true, lastSig = '';
+    // Adaptive resolution: when consecutive drawn frames come slower than ~30 fps, render fewer pixels.
+    var budget = 2.4e6, drewLast = false, slowAvg = 16, slowN = 0;
     function signature() {
       var v = [st.gx, st.gy, st.blink, cur.pupil].concat(cur.A0, cur.A1, cur.B0, cur.B1, cur.C);
       for (var i = 0; i < v.length; i++) v[i] = Math.round(v[i] * 4000);
@@ -847,8 +849,12 @@ void main(){
       var sig = signature();
       resize();
       if (dirty || sig !== lastSig) {
-        dirty = false; lastSig = sig; draw();
-      }
+        if (drewLast && dt > 0) {
+          slowAvg += (dt - slowAvg) * 0.15; slowN++;
+          if (slowN > 12 && slowAvg > 34 && budget > 0.5e6) { budget *= 0.7; slowN = 0; slowAvg = 16; }
+        }
+        dirty = false; lastSig = sig; draw(); drewLast = true;
+      } else drewLast = false;
       if (visible && !document.hidden && !st.frozen) raf = requestAnimationFrame(loop);
     }
     function kick() { if (!raf && !st.frozen) { last = performance.now() - 16; raf = requestAnimationFrame(loop); } }
@@ -878,5 +884,5 @@ void main(){
       debugState: function () { return JSON.parse(JSON.stringify({ st: st, cur: cur })); }
     };
   }
-  window.VijuEyeLab = { create: create, PRESETS: PRESETS, SKIN_PRESETS: SKIN_PRESETS, DEFAULTS: DEFAULTS };
+  window.VijuEyeLab = { VERSION: 4.2, create: create, PRESETS: PRESETS, SKIN_PRESETS: SKIN_PRESETS, DEFAULTS: DEFAULTS };
 })();

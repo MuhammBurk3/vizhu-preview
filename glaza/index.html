@@ -218,11 +218,26 @@
   <div class="row-end"><button class="act" type="button" id="manualClose">Закрыть</button></div>
 </dialog>
 
-<script src="eyes-lab.js"></script>
+<script src="eyes-lab.js?v=4.2"></script>
 <script>
-(function () {
+// A browser may still hold the previous engine in its cache: then load a fresh copy before starting.
+(function (start) {
+  var L = window.VijuEyeLab;
+  if (L && L.VERSION >= 4) return start();
+  var s = document.createElement('script');
+  s.src = 'eyes-lab.js?fresh=' + Date.now();
+  s.onload = s.onerror = start;
+  document.head.appendChild(s);
+})(function () {
   'use strict';
   var LAB = window.VijuEyeLab;
+  var stageEl = document.getElementById('stage');
+  if (!LAB || !(LAB.VERSION >= 4)) {
+    var msg = document.createElement('div'); msg.className = 'fallback';
+    msg.textContent = 'Не удалось загрузить движок глаз. Обновите страницу с очисткой кэша: в Safari ⌥⌘R, в Chrome ⇧⌘R (на Windows Ctrl+F5).';
+    stageEl.appendChild(msg);
+    return;
+  }
   var D = LAB.DEFAULTS;
   var STORE = 'viju-eye-editor-v1', VARIANTS = 'viju-eye-variants-v1';
 
@@ -357,8 +372,6 @@
   var cfg = Object.assign(clone(D), clean(load(STORE)), readHash() || {});
   var canvas = document.getElementById('eyes'), stage = document.getElementById('stage');
   var lab = null;
-  try { lab = LAB.create(canvas, { iris: 'iris.jpg' }); } catch (e) { console.error(e); }
-  if (!lab) stage.appendChild(h('div', { class: 'fallback', text: 'Этому браузеру не хватает WebGL 2, поэтому глаза не показываются. Откройте страницу в свежем Chrome, Safari, Firefox или Edge.' }));
 
   // ---------- controls ----------
   var rows = {}, pressed = {}, auto = { on: false, timer: 0, i: 0 };
@@ -605,10 +618,15 @@
     toast('Все настройки сброшены', 'Вернуть', function () { replaceAll(before); });
   });
 
-  if (lab) lab.setConfig(cfg);
   refresh();
   if (readHash()) persist();
-})();
+  // The controls are on screen first; the eyes start on the next frame so a slow shader compile never hides them.
+  setTimeout(function () {
+    try { lab = LAB.create(canvas, { iris: 'iris.jpg?v=4.2' }); } catch (e) { console.error(e); }
+    if (!lab) { stage.appendChild(h('div', { class: 'fallback', text: 'Этому браузеру не хватает WebGL 2, поэтому глаза не показываются. Откройте страницу в свежем Chrome, Safari, Firefox или Edge.' })); return; }
+    lab.setConfig(cfg);
+  }, 30);
+});
 </script>
 </body>
 </html>
