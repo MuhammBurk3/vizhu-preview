@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="Глаза ВИЖУ">
+<meta property="og:description" content="Живые глаза человекоподобного робота: эмоции, складки кожи, цвета кожи на выбор.">
+<title>Глаза ВИЖУ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Display:wght@300;400&family=Onest:wght@400;500;600&display=swap">
+<style>
+  :root { color-scheme: dark; --bg: #0b1230; --panel: #111936; --line: #28325a; --text: #f2eee6; --muted: #b9c0d4; --gold: #e4bf6c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 'Onest', system-ui, sans-serif; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 56px; }
+  a { color: var(--gold); }
+  h1 { font: 300 clamp(30px, 5vw, 44px)/1.1 'Noto Serif Display', Georgia, serif; margin: 10px 0 0; letter-spacing: 0.02em; }
+  .lead { color: var(--muted); max-width: 70ch; margin: 10px 0 0; }
+  .stage { position: relative; margin-top: 20px; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: #0b1230; transition: background-color .4s ease; touch-action: pan-y; }
+  .stage.day { background: #f6f1e8; }
+  .stage canvas { display: block; width: 100%; aspect-ratio: 2.2 / 1; }
+  .stage .hint { position: absolute; left: 14px; bottom: 10px; font-size: 13px; color: rgba(185, 192, 212, 0.75); pointer-events: none; }
+  .stage.day .hint { color: rgba(79, 88, 112, 0.8); }
+  .fallback { padding: 40px 20px; text-align: center; color: var(--muted); }
+  .controls { display: grid; gap: 18px; margin-top: 18px; }
+  .group h2 { font: 600 12px/1.3 'Onest', sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin: 0 0 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { min-height: 42px; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font: 500 15px/1 'Onest', sans-serif; cursor: pointer; }
+  .chip:hover { color: var(--text); border-color: rgba(228, 191, 108, 0.5); }
+  .chip[aria-pressed="true"] { color: var(--text); border-color: var(--gold); background: rgba(228, 191, 108, 0.12); }
+  .chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .swatch { display: inline-flex; align-items: center; gap: 8px; }
+  .swatch i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); }
+  .note { color: var(--muted); font-size: 15px; min-height: 3em; margin: 4px 0 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px 28px; }
+  .about { margin-top: 30px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--muted); font-size: 15px; }
+  .about b { color: var(--text); font-weight: 600; }
+  .about ul { margin: 8px 0 0; padding-left: 20px; }
+  .about li + li { margin-top: 4px; }
+  @media (max-width: 600px) { .stage canvas { aspect-ratio: 1.7 / 1; } .chip { padding: 9px 12px; font-size: 14px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="../">← Все страницы</a>
+  <h1>Глаза ВИЖУ</h1>
+  <p class="lead">Глаза человекоподобного робота. В покое кожи почти нет: только веки и брови. Кожа проступает там, где эмоция собирает складки. Глаза следят за курсором, а на телефоне — за пальцем.</p>
+
+  <div class="stage" id="stage">
+    <canvas id="eyes" role="img" aria-label="Живые глаза ВИЖУ"></canvas>
+    <div class="hint" id="hint">Проведите курсором или пальцем по экрану</div>
+  </div>
+
+  <div class="controls">
+    <div class="group">
+      <h2>Эмоция</h2>
+      <div class="chips" id="emotions"></div>
+      <p class="note" id="emotionNote" aria-live="polite"></p>
+    </div>
+    <div class="row">
+      <div class="group">
+        <h2>Цвет кожи</h2>
+        <div class="chips" id="skins"></div>
+      </div>
+      <div class="group">
+        <h2>Радужка</h2>
+        <div class="chips"><button class="chip" type="button" id="irisLive" aria-pressed="true">Живая</button><button class="chip" type="button" id="irisOptics" aria-pressed="false">С оптикой</button></div>
+      </div>
+      <div class="group">
+        <h2>Фон сайта</h2>
+        <div class="chips"><button class="chip" type="button" id="bgNight" aria-pressed="true">Ночь</button><button class="chip" type="button" id="bgDay" aria-pressed="false">День</button></div>
+      </div>
+      <div class="group">
+        <h2>Ещё</h2>
+        <div class="chips"><button class="chip" type="button" id="auto" aria-pressed="false">Эмоции по кругу</button><button class="chip" type="button" id="blink">Моргнуть</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="about">
+    <b>Что здесь нового по сравнению с сайтом</b>
+    <ul>
+      <li>Глаз с настоящей оптикой: роговица преломляет свет, зрачок смещается под ней при повороте взгляда, есть влажный блик и тень от века.</li>
+      <li>Брови из отдельных волосков: у головки гуще и торчат вверх, к хвосту тоньше.</li>
+      <li>Складки кожи по мимическим мышцам: «гусиные лапки» и валик под глазом при улыбке, вертикальные складки между бровей, поперечные на переносице, морщины на лбу при удивлении.</li>
+      <li>Эмоции меняются плавно: брови быстрее, складки чуть медленнее, как у живого лица.</li>
+    </ul>
+  </div>
+</div>
+
+<script src="eyes-lab.js"></script>
+<script>
+(function () {
+  'use strict';
+  var EMOTIONS = [
+    ['calm', 'Спокойствие', 'Мягко приоткрытые веки, кожа видна только у век.'],
+    ['attention', 'Внимание', 'Веки шире, брови чуть приподняты, зрачок расширяется.'],
+    ['joy', 'Радость', 'Искренняя улыбка глазами: нижнее веко поднимается, в уголках собираются «гусиные лапки», под глазом валик.'],
+    ['surprise', 'Удивление', 'Брови вверх, глаза широко открыты, на лбу проступают морщины.'],
+    ['empathy', 'Сочувствие', 'Внутренние концы бровей поднимаются домиком, между бровей лёгкая складка.'],
+    ['thinking', 'Задумчивость', 'Брови сведены, между ними вертикальные складки, взгляд уходит вверх и в сторону.'],
+    ['strict', 'Строгость', 'Брови опущены и сведены, глубокие складки между бровей и на переносице, напряжённые нижние веки.'],
+    ['doubt', 'Сомнение', 'Одна бровь приподнята, второй глаз прищурен.'],
+    ['tenderness', 'Нежность', 'Мягкая улыбка глазами, широкий зрачок.'],
+    ['sleepy', 'Сонливость', 'Тяжёлые веки и медленные моргания.']
+  ];
+  var SKINS = [['night', 'Ночной синий', '#2c3a78'], ['violet', 'Фиолетовый', '#4b3a86'], ['indigo', 'Индиго', '#35306e'], ['cobalt', 'Кобальт', '#1f4a8c'], ['moon', 'Лунный', '#7481a8']];
+
+  var canvas = document.getElementById('eyes');
+  var stage = document.getElementById('stage');
+  var lab = null;
+  try { lab = VijuEyeLab.create(canvas, { iris: 'iris.jpg' }); } catch (e) { lab = null; }
+  if (!lab) {
+    stage.innerHTML = '<div class="fallback">Этот браузер не поддерживает WebGL2, поэтому глаза не отрисовались. Откройте страницу в свежем Chrome, Safari или Firefox.</div>';
+    return;
+  }
+
+  var state = { emotion: 'calm', skin: 'night', bg: 'night', optics: false };
+  var emo = document.getElementById('emotions'), note = document.getElementById('emotionNote'), skins = document.getElementById('skins');
+  EMOTIONS.forEach(function (e) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = e[1]; b.dataset.id = e[0];
+    b.addEventListener('click', function () { stopAuto(); setEmotion(e[0]); });
+    emo.appendChild(b);
+  });
+  SKINS.forEach(function (s) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip swatch'; b.dataset.id = s[0];
+    b.innerHTML = '<i style="background:' + s[2] + '"></i>'; b.appendChild(document.createTextNode(s[1]));
+    b.addEventListener('click', function () { setSkin(s[0]); });
+    skins.appendChild(b);
+  });
+  function press(container, id) { [].forEach.call(container.children, function (c) { c.setAttribute('aria-pressed', String(c.dataset.id === id)); }); }
+  function saveHash() { try { history.replaceState(null, '', '#' + [state.emotion, state.skin, state.bg, state.optics ? 'optics' : 'live'].join('_')); } catch (e) {} }
+  function setEmotion(id) {
+    var e = EMOTIONS.filter(function (x) { return x[0] === id; })[0]; if (!e) return;
+    state.emotion = id; lab.setEmotion(id); press(emo, id); note.textContent = e[2]; saveHash();
+  }
+  function setSkin(id) { state.skin = id; lab.setSkin(id); press(skins, id); saveHash(); }
+  function setBg(day) {
+    state.bg = day ? 'day' : 'night'; lab.setDay(day); stage.classList.toggle('day', day);
+    document.getElementById('bgDay').setAttribute('aria-pressed', String(day)); document.getElementById('bgNight').setAttribute('aria-pressed', String(!day)); saveHash();
+  }
+  function setOptics(on) {
+    state.optics = on; lab.setOptics(on);
+    document.getElementById('irisOptics').setAttribute('aria-pressed', String(on)); document.getElementById('irisLive').setAttribute('aria-pressed', String(!on)); saveHash();
+  }
+  document.getElementById('bgNight').addEventListener('click', function () { setBg(false); });
+  document.getElementById('bgDay').addEventListener('click', function () { setBg(true); });
+  document.getElementById('irisLive').addEventListener('click', function () { setOptics(false); });
+  document.getElementById('irisOptics').addEventListener('click', function () { setOptics(true); });
+  document.getElementById('blink').addEventListener('click', function () { lab.blink(); });
+
+  var autoTimer = 0, autoBtn = document.getElementById('auto');
+  function stopAuto() { clearInterval(autoTimer); autoTimer = 0; autoBtn.setAttribute('aria-pressed', 'false'); }
+  autoBtn.addEventListener('click', function () {
+    if (autoTimer) { stopAuto(); return; }
+    autoBtn.setAttribute('aria-pressed', 'true');
+    var ids = EMOTIONS.map(function (e) { return e[0]; });
+    var next = function () { var i = ids.indexOf(state.emotion); setEmotion(ids[(i + 1) % ids.length]); };
+    next(); autoTimer = setInterval(next, 3200);
+  });
+  var hint = document.getElementById('hint');
+  window.addEventListener('pointermove', function () { hint.style.opacity = '0'; }, { once: true, passive: true });
+
+  var parts = (location.hash || '').slice(1).split('_');
+  setEmotion(EMOTIONS.some(function (e) { return e[0] === parts[0]; }) ? parts[0] : 'calm');
+  setSkin(SKINS.some(function (s) { return s[0] === parts[1]; }) ? parts[1] : 'night');
+  setBg(parts[2] === 'day');
+  setOptics(parts[3] === 'optics');
+})();
+</script>
+</body>
+</html>
